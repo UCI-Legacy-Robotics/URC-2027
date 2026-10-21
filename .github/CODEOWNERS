@@ -1,0 +1,5 @@
+# Everything needs approval from the admins team
+*        @your-org/admins
+
+# Docs have no owner, so no code-owner review is required
+/docs/
