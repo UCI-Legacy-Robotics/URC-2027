@@ -18,11 +18,10 @@ rover_ros2_ws/
     ├── science/          # science sequences, panorama
     ├── cv/               # gesture, keyboard, object detection, ArUco
     └── rover_telemetry/  # package: data to base station, controls from base station
+docs/                     # software docs
 ```
 
-Each folder under `src/` groups related ROS 2 packages. colcon finds packages
-recursively, so put packages directly inside the matching folder, e.g.
-`src/drive/drive_teleop/package.xml`.
+Each folder under `src/` groups related ROS 2 packages. colcon finds packages recursively, so put packages directly inside the matching folder, e.g. `src/drive/drive_teleop/package.xml`. Shared messages, services, and actions go in `src/interfaces/`.
 
 ## Setup
 
@@ -32,9 +31,7 @@ ROS 2 Jazzy requires **Ubuntu 24.04**. On Windows, install a 24.04 WSL distro:
 wsl --install -d Ubuntu-24.04
 ```
 
-Inside Ubuntu 24.04, install ROS 2 Jazzy by following the
-[official guide](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html)
-(`ros-jazzy-desktop` plus `ros-dev-tools`), then:
+Inside Ubuntu 24.04, install ROS 2 Jazzy by following the [official guide](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) (`ros-jazzy-desktop` plus `ros-dev-tools`), then:
 
 ```bash
 sudo rosdep init   # first time only
@@ -50,3 +47,13 @@ rosdep install --from-paths src --ignore-src -y
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+If a build works for you but not for others, check that every dependency is listed in the package's `package.xml`.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+
+## Docs
+
+Software docs are in [`docs/`](docs/).
