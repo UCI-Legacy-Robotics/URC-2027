@@ -32,6 +32,46 @@ Stay up to date with `main` often, especially on long-running branches:
 git fetch origin && git rebase origin/main
 ```
 
+## Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <short description>
+```
+
+The scope is the subsystem, the same one used in your branch name. It's optional for changes that span the whole repo. Write the description in the imperative mood, in lowercase, with no trailing period.
+
+| Type       | Use for                                          |
+| ---------- | ------------------------------------------------ |
+| `feat`     | a new feature or capability                      |
+| `fix`      | a bug fix                                        |
+| `refactor` | a code change that neither fixes nor adds        |
+| `perf`     | a performance improvement                        |
+| `test`     | adding or fixing tests                           |
+| `docs`     | docs only                                        |
+| `build`    | CMake, `package.xml`, dependencies               |
+| `ci`       | CI workflows                                     |
+| `chore`    | anything else (tooling, cleanup, repo config)    |
+
+Examples:
+
+```
+feat(drive): add deadzone to joystick teleop
+fix(arm): clamp joint velocity before sending to controller
+docs: add base station network diagram
+```
+
+For breaking changes, such as a renamed topic or a changed message field, add `!` after the scope and explain the change in the body:
+
+```
+feat(interfaces)!: rename DriveCmd.speed to DriveCmd.linear_velocity
+
+Nodes publishing DriveCmd must update the field name.
+```
+
+PR titles follow the same format.
+
 ## Before marking a PR ready
 
 From `rover_ros2_ws/`:
