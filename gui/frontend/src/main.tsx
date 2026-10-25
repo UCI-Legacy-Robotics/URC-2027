@@ -7,7 +7,10 @@ import Cameras from './routes/Cameras.tsx'
 import Drive from './routes/Drive.tsx'
 import Telemetry from './routes/Telemetry.tsx'
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')
+if (!root) throw new Error('missing #root element')
+
+createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>

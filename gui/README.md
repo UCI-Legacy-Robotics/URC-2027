@@ -19,7 +19,7 @@ flowchart LR
 | Part | Stack |
 | ---- | ----- |
 | `backend/` | Python 3.12, [uv](https://docs.astral.sh/uv/), FastAPI + Uvicorn, pymavlink (MAVLink 2), Pydantic v2 + pydantic-settings, pyserial, pytest, ruff |
-| `frontend/` | Node 22, Vite, React 19, TypeScript, React Router 7, oxlint |
+| `frontend/` | Node 22, Vite, React 19, TypeScript, React Router 7, Biome (formatting + lint), ESLint (React hooks + type-aware TypeScript rules) |
 | MAVLink | Dialect in [`../mavlink/rover.xml`](../mavlink/README.md), Python code generated with `mavgen` |
 
 Everything must run offline at the field: no CDNs or runtime downloads. Install dependencies before you leave.
@@ -88,3 +88,5 @@ Run before marking a PR ready:
 cd gui/backend && uv run ruff check .
 cd ../frontend && npm run lint && npm run build
 ```
+
+`npm run format` applies Biome's formatting and safe fixes.
