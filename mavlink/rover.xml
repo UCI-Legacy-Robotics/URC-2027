@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<!--
+  URC-2027 rover MAVLink dialect. Shared by the rover (rover_telemetry) and the
+  base station (gui/backend). See README.md before changing anything here.
+
+  Reserved ID range for this dialect: 48000-48999, for both message IDs and
+  MAV_CMD values.
+-->
+<mavlink>
+  <include>common.xml</include>
+  <version>1</version>
+  <dialect>0</dialect>
+  <enums>
+    <!-- PLACEHOLDER: replace with the team's real rover modes. -->
+    <enum name="ROVER_MODE">
+      <description>Rover operating mode. Sent in HEARTBEAT.custom_mode and ROVER_STATUS.mode, and set with MAV_CMD_DO_SET_MODE (param2).</description>
+      <entry value="0" name="ROVER_MODE_STANDBY">
+        <description>Drive disabled, rover idle.</description>
+      </entry>
+      <entry value="1" name="ROVER_MODE_MANUAL">
+        <description>Teleoperated driving from the base station (MANUAL_CONTROL).</description>
+      </entry>
+      <entry value="2" name="ROVER_MODE_AUTONOMOUS">
+        <description>Autonomous navigation.</description>
+      </entry>
+    </enum>
+    <enum name="MAV_CMD">
+      <entry value="48000" name="MAV_CMD_ROVER_VIDEO_SELECT_CAMERA" hasLocation="false" isDestination="false">
+        <description>Select which camera feeds a video stream.</description>
+        <param index="1" label="Stream" minValue="0" increment="1">Video stream index.</param>
+        <param index="2" label="Camera" minValue="0" increment="1">Camera ID.</param>
+        <param index="3">Empty</param>
+        <param index="4">Empty</param>
+        <param index="5">Empty</param>
+        <param index="6">Empty</param>
+        <param index="7">Empty</param>
+      </entry>
+      <entry value="48001" name="MAV_CMD_ROVER_VIDEO_SET_BITRATE" hasLocation="false" isDestination="false">
+        <description>Set the encoder bitrate of a video stream.</description>
+        <param index="1" label="Stream" minValue="0" increment="1">Video stream index.</param>
+        <param index="2" label="Bitrate" units="kbps" minValue="0">Target bitrate.</param>
+        <param index="3">Empty</param>
+        <param index="4">Empty</param>
+        <param index="5">Empty</param>
+        <param index="6">Empty</param>
+        <param index="7">Empty</param>
+      </entry>
+      <entry value="48002" name="MAV_CMD_ROVER_VIDEO_SET_RESOLUTION" hasLocation="false" isDestination="false">
+        <description>Set the resolution of a video stream.</description>
+        <param index="1" label="Stream" minValue="0" increment="1">Video stream index.</param>
+        <param index="2" label="Width" units="pix" minValue="0" increment="1">Horizontal resolution.</param>
+        <param index="3" label="Height" units="pix" minValue="0" increment="1">Vertical resolution.</param>
+        <param index="4">Empty</param>
+        <param index="5">Empty</param>
+        <param index="6">Empty</param>
+        <param index="7">Empty</param>
+      </entry>
+    </enum>
+  </enums>
+  <messages>
+    <!-- PLACEHOLDER: fields are examples to prove the pipeline. Replace with real health data. -->
+    <message id="48000" name="ROVER_STATUS">
+      <description>Rover mode and health summary. Sent at about 1 Hz.</description>
+      <field type="uint8_t" name="mode" enum="ROVER_MODE">Current operating mode.</field>
+      <field type="uint8_t" name="estop">1 if the hardware e-stop is engaged.</field>
+      <field type="uint8_t" name="cpu_load" units="%">Onboard computer CPU load.</field>
+      <field type="int16_t" name="cpu_temp" units="cdegC">Onboard computer temperature.</field>
+      <field type="int16_t" name="motor_temp_max" units="cdegC">Hottest drive motor temperature.</field>
+      <field type="uint32_t" name="error_flags">Bitmask of active faults. Bits are not yet defined.</field>
+    </message>
+    <message id="48001" name="ROVER_VIDEO_STATUS">
+      <description>Active settings of one video stream. Sent at about 0.5 Hz per stream, and once after any video command.</description>
+      <field type="uint8_t" name="stream">Video stream index.</field>
+      <field type="uint8_t" name="camera">Camera currently feeding this stream.</field>
+      <field type="uint16_t" name="bitrate" units="kbps">Encoder bitrate.</field>
+      <field type="uint16_t" name="width" units="pix">Horizontal resolution.</field>
+      <field type="uint16_t" name="height" units="pix">Vertical resolution.</field>
+      <field type="uint8_t" name="streaming">1 if the stream is running.</field>
+    </message>
+  </messages>
+</mavlink>

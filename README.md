@@ -18,8 +18,14 @@ rover_ros2_ws/
     ├── science/          # science sequences, panorama
     ├── cv/               # gesture, keyboard, object detection, ArUco
     └── rover_telemetry/  # package: data to base station, controls from base station
-docs/                     # software docs
+gui/                      # base station GUI (no ROS)
+├── backend/              # MAVLink <-> WebSocket server: owns the radio, logs telemetry
+└── frontend/             # Vite + React + TypeScript dashboard
+mavlink/                  # MAVLink dialect XML shared by the rover and gui/backend
+docs/                     # subsystem docs
 ```
+
+The rover runs ROS 2. The base station does not: `gui/backend` decodes MAVLink from the radio and streams it to the frontend over WebSockets. Both sides generate their MAVLink code from the dialect in `mavlink/`, so message changes go there first.
 
 Each folder under `src/` groups related ROS 2 packages. colcon finds packages recursively, so put packages directly inside the matching folder, e.g. `src/drive/drive_teleop/package.xml`. Shared messages, services, and actions go in `src/interfaces/`.
 

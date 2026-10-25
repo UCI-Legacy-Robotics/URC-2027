@@ -1,0 +1,6 @@
+gui/backend/app/generated/** linguist-generated=true
+gui/backend/schema/** linguist-generated=true
+gui/frontend/src/generated/** linguist-generated=true
+mavlink/common.xml linguist-vendored=true
+mavlink/standard.xml linguist-vendored=true
+mavlink/minimal.xml linguist-vendored=true
