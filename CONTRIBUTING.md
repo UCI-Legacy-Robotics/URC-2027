@@ -14,7 +14,7 @@ See the [README](README.md) for setup and building.
    ```bash
    git checkout -b ethans/drive/teleop-deadzone
    ```
-   Subsystems match the `src/` folders (`drive`, `arm`, `cv`, `telemetry`, ...), or `docs` for docs-only changes.
+   Subsystems match the `src/` folders (`drive`, `arm`, `cv`, `telemetry`, ...), `gui` for the base station GUI, `mavlink` for the MAVLink dialect, or `docs` for docs-only changes.
 3. **Open a draft PR right away, even if nothing works yet.**
    ```bash
    git push -u origin ethans/drive/teleop-deadzone
@@ -83,6 +83,8 @@ colcon test-result --verbose
 ```
 
 Make sure it builds, tests pass, and you've run it in sim or on hardware.
+
+For `gui/` changes, run the checks in [gui/README.md](gui/README.md#checks) instead.
 
 ## Docs
 

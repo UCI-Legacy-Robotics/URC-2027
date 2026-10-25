@@ -56,6 +56,10 @@ source install/setup.bash
 
 If a build works for you but not for others, check that every dependency is listed in the package's `package.xml`.
 
+## Base station GUI
+
+The base station GUI lives in `gui/` and doesn't need ROS. See [gui/README.md](gui/README.md) for setup and the tech stack, and [mavlink/README.md](mavlink/README.md) for the shared MAVLink dialect.
+
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
