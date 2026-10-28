@@ -1,0 +1,21 @@
+arm_teleop:
+  ros__parameters:
+    joint_names: [base, shoulder, elbow, wrist_pitch, wrist_roll]
+    command_frame: base_link
+
+    # Four centered joystick axes, unchanged from the existing mapping.
+    axes: [0, 1, 2, 3]
+    axis_signs: [1.0, -1.0, 1.0, -1.0]
+
+    enable_button: 9         # L2 button (held to move)
+    mode_button: 6           # Options (toggle when neutral and L2 released)
+    wrist_negative_button: 13  # D-pad left
+    wrist_positive_button: 14  # D-pad right
+    yaw_positive_button: 11    # D-pad up (Cartesian yaw)
+    yaw_negative_button: 12    # D-pad down (Cartesian yaw)
+
+    deadzone: 0.1
+    joy_timeout: 0.5
+    linear_speed: 0.15
+    angular_speed: 0.4
+    joint_speed: 0.65

@@ -1,0 +1,19 @@
+arm_teleop:
+  ros__parameters:
+    joint_names: [base, shoulder, elbow, wrist_pitch, wrist_roll]
+    command_frame: base_link
+
+    enable_button: 4
+    mode_button: 7                 # Start: switch joint / Cartesian
+    yaw_positive_button: 3        # Y: Cartesian yaw +
+    yaw_negative_button: 1        # B: Cartesian yaw -
+
+    # Five-axis mode uses the D-pad axes; wrist buttons are not read.
+    axes: [0, 1, 4, 6, 7]
+    axis_signs: [1.0, 1.0, 1.0, -1.0, -1.0]
+
+    deadzone: 0.1
+    joy_timeout: 0.25              # Seconds, measured with a steady clock
+    linear_speed: 0.1              # m/s
+    angular_speed: 0.3             # rad/s
+    joint_speed: 0.3               # rad/s

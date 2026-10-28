@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>arm_gamepad_teleop</name>
+  <version>0.0.1</version>
+  <description>Arm gamepad teleoperation for Jazzy with patched MoveIt Servo.</description>
+  <maintainer email="ethansaddy@gmail.com">ethan</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>control_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>moveit_msgs</depend>
+  <exec_depend>moveit_servo</exec_depend>
+  <exec_depend>joy</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>arm</exec_depend>
+  <exec_depend>arm_control_config</exec_depend>
+  <exec_depend>moveit_config</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<robot name="arm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Include the physical model without editing its contents. -->
+  <xacro:include filename="$(find arm)/description/arm.urdf"/>
+
+  <!-- Includes define macros; calls below insert the generated XML. -->
+  <xacro:include filename="arm.ros2_control.xacro"/>
+  <xacro:include filename="arm.gazebo.xacro"/>
+  <xacro:arg name="controllers_file" default="${xacro.abs_filename('../config/ros2_controllers.yaml')}"/>
+
+  <!-- These modes must match command_interfaces in the controller YAML.
+       Position commands are a simulation starting point, not a claim about
+       the physical motors' command modes. -->
+  <xacro:arm_sim_ros2_control arm_command_interface="position" solenoid_command_interface="position"/>
+
+  <xacro:arm_gazebo controllers_file="$(arg controllers_file)"/>
+</robot>

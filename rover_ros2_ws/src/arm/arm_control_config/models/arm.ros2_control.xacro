@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Adds interface declarations for an EXISTING physical URDF joint. -->
+  <xacro:macro name="arm_control_joint" params="joint_name command_interface initial_position:=0.0">
+    <joint name="${joint_name}">
+      <command_interface name="${command_interface}"/>
+      <state_interface name="position">
+        <param name="initial_value">${initial_position}</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+
+  <xacro:macro name="arm_sim_ros2_control" params="arm_command_interface:=position solenoid_command_interface:=position">
+    <ros2_control name="ArmGazeboSystem" type="system">
+      <hardware>
+        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      </hardware>
+
+      <xacro:arm_control_joint joint_name="base" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="shoulder" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="elbow" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="wrist_pitch" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="wrist_roll" command_interface="${arm_command_interface}"/>
+
+      <!-- A separate controller operates the linear tool joint. -->
+      <xacro:arm_control_joint joint_name="solenoid" command_interface="${solenoid_command_interface}"/>
+
+      <!-- The baseline gripper joint ends in a massless gripper_dummy. Add a physical gripper model/inertia before controlling it in Gazebo. -->
+    </ros2_control>
+  </xacro:macro>
+
+</robot>
