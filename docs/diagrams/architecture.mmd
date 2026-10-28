@@ -1,0 +1,93 @@
+flowchart LR
+    subgraph ROVER["Rover (ROS 2)"]
+        subgraph CAMPROC["Camera process (component_container_mt, intra-process)"]
+            ZED["ZED 2i driver<br/>(zed-ros2-wrapper)"]
+            ARMCAM["arm camera drivers<br/>2× OV9281 (arm mission)"]
+            SCICAM["science camera node<br/>A219 (science mission)"]
+            SM["stream manager<br/>(GStreamer, H.264)"]
+        end
+
+        subgraph SCI["Science subsystem (science mission)"]
+            SEQ["science sequencer<br/>state machine, ROS actions:<br/>bradford / npk / pano"]
+            subgraph EMB["Embedded nodes"]
+                DRILL["drill"]
+                MIXER["mixer"]
+                SPEC["spectrophotometer"]
+                NPK["NPK sensor"]
+            end
+            STITCH["cv stitcher"]
+            ANNOT["pano annotator<br/>cardinal direction + scale"]
+        end
+
+        CAP["camera capture node<br/>image + heading"]
+        DRIVE["drive / Nav2"]
+        CV["ArUco + object detection"]
+        MEDIA["media file server<br/>(panoramas, science photos)"]
+        RMTX["MediaMTX (rover)"]
+        TELEM["rover_telemetry<br/>(ROS ↔ MAVLink)"]
+    end
+
+    subgraph LINKS["Radio links"]
+        R900(["900 MHz<br/>MAVLink: telemetry + all commands"])
+        R5G(["5 GHz<br/>video streams + media files"])
+    end
+
+    subgraph BASE["Base station (no ROS)"]
+        BACK["gui/backend<br/>(Python)"]
+        BMTX["MediaMTX (base)"]
+        FRONT["gui/frontend<br/>(one window per monitor)"]
+    end
+
+    %% Inside the camera process: no serialization
+    ZED -->|"images (in-process)"| SM
+    ARMCAM -->|"images (in-process)"| SM
+    SCICAM -->|"live video frames"| SM
+
+    %% Camera data to other processes
+    ZED -->|"image + mag topics"| CAP
+    ZED -->|"depth / point cloud"| DRIVE
+    ARMCAM -->|"image topics"| CV
+
+    %% Science sequencer control and status
+    TELEM -->|"action goal: start / cancel"| SEQ
+    SEQ -->|"action feedback + result<br/>(status, absorbance, NPK, ready flags)"| TELEM
+
+    %% Bradford sequence
+    SEQ -->|"1. lower / raise"| DRILL
+    SEQ -->|"2. run"| MIXER
+    SEQ -->|"3. measure"| SPEC
+    SPEC -->|"absorbance"| SEQ
+    SEQ -->|"photo of drill site"| SCICAM
+    SCICAM -->|"full-res photo"| MEDIA
+
+    %% NPK sequence
+    SEQ -->|"lower + measure"| NPK
+    NPK -->|"N, P, K readings"| SEQ
+
+    %% Pano sequence
+    SEQ -->|"rotate 45° (×8)"| DRIVE
+    SEQ -->|"capture()"| CAP
+    CAP -->|"CapturedFrame"| SEQ
+    SEQ -->|"stitch(frames)"| STITCH
+    STITCH -->|"panorama"| ANNOT
+    ANNOT -->|"annotated panorama"| SEQ
+    SEQ -->|"save file"| MEDIA
+
+    %% Video pipeline
+    SM --> RMTX
+
+    %% 900 MHz: telemetry and commands
+    TELEM <--> R900
+    R900 <--> BACK
+    TELEM -->|"bitrate / resolution"| SM
+
+    %% 5 GHz: video and media
+    RMTX -->|"on-demand pull"| R5G
+    R5G --> BMTX
+    MEDIA -->|"HTTP download"| R5G
+    R5G --> BACK
+
+    %% Base station to browser
+    BACK <-->|"WebSocket"| FRONT
+    BACK -->|"panoramas + photos (HTTP)"| FRONT
+    BMTX -->|"WebRTC"| FRONT

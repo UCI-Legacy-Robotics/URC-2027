@@ -1,0 +1,45 @@
+flowchart LR
+    subgraph ROVER["Rover (ROS 2)"]
+        ZED["ZED 2i driver<br/>(zed-ros2-wrapper)"]
+        SEQ["science sequencer<br/>(pano action)"]
+        DRIVE["drive"]
+        CAP["camera capture node<br/>image + heading"]
+        STITCH["cv stitcher"]
+        ANNOT["pano annotator<br/>cardinal direction + scale"]
+        MEDIA["media file server"]
+        TELEM["rover_telemetry<br/>(ROS ↔ MAVLink)"]
+    end
+
+    subgraph LINKS["Radio links"]
+        R900(["900 MHz<br/>start, status, ready flag"])
+        R5G(["5 GHz<br/>panorama file"])
+    end
+
+    subgraph BASE["Base station (no ROS)"]
+        BACK["gui/backend<br/>(Python)"]
+        FRONT["gui/frontend"]
+    end
+
+    %% Start
+    FRONT -->|"start pano"| BACK
+    BACK <--> R900
+    R900 <--> TELEM
+    TELEM -->|"action goal"| SEQ
+
+    %% Capture loop: repeat 8 times
+    SEQ -->|"1. rotate 45° (×8)"| DRIVE
+    SEQ -->|"2. capture() after settling"| CAP
+    ZED -->|"image + mag topics"| CAP
+    CAP -->|"3. CapturedFrame<br/>(image, heading, time)"| SEQ
+
+    %% Process
+    SEQ -->|"4. stitch(frames)"| STITCH
+    STITCH -->|"5. panorama"| ANNOT
+    ANNOT -->|"6. annotated panorama"| SEQ
+    SEQ -->|"7. save file"| MEDIA
+
+    %% Report back
+    SEQ -->|"feedback: captured i/8,<br/>result: pano ready"| TELEM
+    MEDIA -->|"8. HTTP download"| R5G
+    R5G --> BACK
+    BACK -->|"show panorama"| FRONT
