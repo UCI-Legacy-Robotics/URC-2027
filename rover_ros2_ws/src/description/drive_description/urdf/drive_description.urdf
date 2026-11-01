@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Converted from the SolidWorks URDF export of "26 MasterCad Suspension-Chassis Test".
+     Link frames sit on the real pivots (measured from the meshes); x forward, z up.
+     Joint limits on rockers, bogies and steering are placeholders - set them to the real hardware stops. -->
+<robot name="drive_description">
+
+  <link name="base_footprint"/>
+  <joint name="base_footprint_joint" type="fixed">
+    <origin xyz="0 0 0.473659" rpy="0 0 0"/>
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+  </joint>
+
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0.000174426 -1.18111e-05 -0.011053" rpy="0 0 0"/>
+      <mass value="159.329"/>
+      <inertia ixx="3.00843" ixy="2.86539e-05" ixz="2.80283e-05" iyy="7.65005" iyz="-1.10135e-05" izz="10.074"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.000347363 -0.275706 -1.13285e-05" rpy="3.14159 0 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/base_link.STL"/></geometry>
+      <material name="base_link_color"><color rgba="0.2667 0.2667 0.2667 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000347363 -0.275706 -1.13285e-05" rpy="3.14159 0 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/base_link.STL"/></geometry>
+    </collision>
+  </link>
+
+  <link name="right_rocker">
+    <inertial>
+      <origin xyz="0.0564073 -0.0729809 -0.0518177" rpy="0 0 0"/>
+      <mass value="3.02483"/>
+      <inertia ixx="0.00365289" ixy="-2.52535e-08" ixz="0.00205485" iyy="0.00957997" iyz="3.86952e-09" izz="0.00796096"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.000300163 -0.1478 1.42078e-06" rpy="0.594116 2.79495e-07 -1.57079"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_rocker.STL"/></geometry>
+      <material name="right_rocker_color"><color rgba="0.8667 0.9098 1 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000300163 -0.1478 1.42078e-06" rpy="0.594116 2.79495e-07 -1.57079"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_rocker.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="right_rocker_joint" type="revolute">
+    <origin xyz="0 -0.2857 0" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="right_rocker"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.6" upper="0.6" effort="30" velocity="6"/>
+    <!-- rocker-bogie differential: right rocker turns opposite to the left -->
+    <mimic joint="left_rocker_joint" multiplier="-1" offset="0"/>
+  </joint>
+
+  <link name="left_rocker">
+    <inertial>
+      <origin xyz="-0.00355518 0.0734513 -0.0734869" rpy="0 0 0"/>
+      <mass value="3.70672"/>
+      <inertia ixx="0.00370142" ixy="5.17432e-09" ixz="0.00205091" iyy="0.0101925" iyz="1.10887e-08" izz="0.00811517"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.000300135 0 4.37551e-06" rpy="1.5708 0.0271556 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_rocker.STL"/></geometry>
+      <material name="left_rocker_color"><color rgba="0.8667 0.9098 1 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000300135 0 4.37551e-06" rpy="1.5708 0.0271556 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_rocker.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="left_rocker_joint" type="revolute">
+    <origin xyz="0 0.2857 0" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="left_rocker"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.6" upper="0.6" effort="30" velocity="6"/>
+  </joint>
+
+  <link name="right_bogie">
+    <inertial>
+      <origin xyz="0.000276478 0.0388831 -0.0974406" rpy="0 0 0"/>
+      <mass value="1.86795"/>
+      <inertia ixx="0.00348763" ixy="3.2527e-07" ixz="-1.82915e-07" iyy="0.0038929" iyz="0.000698837" izz="0.00311641"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.190955 -0.0839 0.144274" rpy="-3.14159 1.32053e-08 1.01889e-05"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_bogie.STL"/></geometry>
+      <material name="right_bogie_color"><color rgba="0.8667 0.9098 1 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.190955 -0.0839 0.144274" rpy="-3.14159 1.32053e-08 1.01889e-05"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_bogie.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="right_bogie_joint" type="revolute">
+    <origin xyz="-0.203177 -0.0739 -0.126962" rpy="0 0 0"/>
+    <parent link="right_rocker"/>
+    <child link="right_bogie"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.6" upper="0.6" effort="30" velocity="6"/>
+  </joint>
+
+  <link name="left_bogie">
+    <inertial>
+      <origin xyz="-0.000111659 -0.0387045 -0.0966811" rpy="0 0 0"/>
+      <mass value="1.85703"/>
+      <inertia ixx="0.00348619" ixy="3.26835e-07" ixz="1.7749e-07" iyy="0.00389019" iyz="-0.000698839" izz="0.00311498"/>
+    </inertial>
+    <visual>
+      <origin xyz="1.52345 -2.0367 -0.489168" rpy="-3.14158 0 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_bogie.STL"/></geometry>
+      <material name="left_bogie_color"><color rgba="0.8667 0.9098 1 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="1.52345 -2.0367 -0.489168" rpy="-3.14158 0 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_bogie.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="left_bogie_joint" type="revolute">
+    <origin xyz="-0.203015 0.0739 -0.127025" rpy="0 0 0"/>
+    <parent link="left_rocker"/>
+    <child link="left_bogie"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.6" upper="0.6" effort="30" velocity="6"/>
+  </joint>
+
+  <link name="right_steering">
+    <inertial>
+      <origin xyz="-0.0015822 0.0764677 -0.0818667" rpy="0 0 0"/>
+      <mass value="0.46292"/>
+      <inertia ixx="0.00142257" ixy="6.03174e-06" ixz="-1.49093e-05" iyy="0.000953512" iyz="0.000349945" izz="0.000539945"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.891122 -1.26169 -0.701383" rpy="1.57219 0.0167964 -2.5994e-05"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_steering.STL"/></geometry>
+      <material name="right_steering_color"><color rgba="0.8941 0.8941 0.8941 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.891122 -1.26169 -0.701383" rpy="1.57219 0.0167964 -2.5994e-05"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_steering.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="right_steering_joint" type="revolute">
+    <origin xyz="0.383904 -0.0739 -0.214861" rpy="0 0 0"/>
+    <parent link="right_rocker"/>
+    <child link="right_steering"/>
+    <axis xyz="0.0380451 0 0.999276"/>
+    <limit lower="-0.8" upper="0.8" effort="30" velocity="6"/>
+  </joint>
+
+  <link name="left_steering">
+    <inertial>
+      <origin xyz="-0.00101454 -0.0759133 -0.0790553" rpy="0 0 0"/>
+      <mass value="0.440451"/>
+      <inertia ixx="0.00141086" ixy="-5.61893e-06" ixz="-1.46973e-05" iyy="0.000935196" iyz="-0.00034854" izz="0.000516868"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.375601 -0.148522 0.21432" rpy="1.5873 -0.00199635 1.5707"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_steering.STL"/></geometry>
+      <material name="left_steering_color"><color rgba="0.8667 0.9098 1 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.375601 -0.148522 0.21432" rpy="1.5873 -0.00199635 1.5707"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_steering.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="left_steering_joint" type="revolute">
+    <origin xyz="0.383959 0.0737 -0.21473" rpy="0 0 0"/>
+    <parent link="left_rocker"/>
+    <child link="left_steering"/>
+    <axis xyz="0.0478801 0 0.998853"/>
+    <limit lower="-0.8" upper="0.8" effort="30" velocity="6"/>
+  </joint>
+
+  <link name="right_front_wheel">
+    <inertial>
+      <origin xyz="-1.64822e-06 -0.0306879 -4.27974e-05" rpy="0 0 0"/>
+      <mass value="1.07156"/>
+      <inertia ixx="0.0040845" ixy="1.28015e-07" ixz="1.58478e-10" iyy="0.00649745" iyz="3.36274e-06" izz="0.0040845"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.377739 -0.110165 0.359138" rpy="-3.12524 1.48549 0.0162435"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_front_wheel.STL"/></geometry>
+      <material name="right_front_wheel_color"><color rgba="0.8941 0.8941 0.8941 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.377739 -0.110165 0.359138" rpy="-3.12524 1.48549 0.0162435"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_front_wheel.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="right_front_wheel_joint" type="continuous">
+    <origin xyz="-0.0024001 0.0336592 -0.144347" rpy="0 0 0"/>
+    <parent link="right_steering"/>
+    <child link="right_front_wheel"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="30" velocity="20"/>
+  </joint>
+
+  <link name="left_front_wheel">
+    <inertial>
+      <origin xyz="2.91595e-06 0.0306878 6.11665e-05" rpy="0 0 0"/>
+      <mass value="1.07156"/>
+      <inertia ixx="0.0040845" ixy="2.3047e-07" ixz="4.82226e-10" iyy="0.00649745" iyz="4.80818e-06" izz="0.0040845"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.930025 -1.94641 -0.57163" rpy="3.12475 1.45217 3.12478"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_front_wheel.STL"/></geometry>
+      <material name="left_front_wheel_color"><color rgba="0.8941 0.8941 0.8941 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.930025 -1.94641 -0.57163" rpy="3.12475 1.45217 3.12478"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_front_wheel.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="left_front_wheel_joint" type="continuous">
+    <origin xyz="-0.0023236 -0.0329836 -0.14456" rpy="0 0 0"/>
+    <parent link="left_steering"/>
+    <child link="left_front_wheel"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="30" velocity="20"/>
+  </joint>
+
+  <link name="right_middle_wheel">
+    <inertial>
+      <origin xyz="4.00218e-07 -0.0313003 -1.68947e-07" rpy="0 0 0"/>
+      <mass value="1.61096"/>
+      <inertia ixx="0.0055952" ixy="-3.63221e-08" ixz="1.30537e-09" iyy="0.00866458" iyz="7.9339e-09" izz="0.0055952"/>
+    </inertial>
+    <visual>
+      <origin xyz="9.38315e-07 -0.07845 -1.28849e-07" rpy="1.5708 0.4215 1.22808e-05"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_middle_wheel.STL"/></geometry>
+      <material name="right_middle_wheel_color"><color rgba="0.698 0.698 0.698 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="9.38315e-07 -0.07845 -1.28849e-07" rpy="1.5708 0.4215 1.22808e-05"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_middle_wheel.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="right_middle_wheel_joint" type="continuous">
+    <origin xyz="0.198697 0.0369838 -0.230215" rpy="0 0 0"/>
+    <parent link="right_bogie"/>
+    <child link="right_middle_wheel"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="30" velocity="20"/>
+  </joint>
+
+  <link name="right_back_wheel">
+    <inertial>
+      <origin xyz="3.94675e-07 -0.0313003 -1.64584e-07" rpy="0 0 0"/>
+      <mass value="1.61096"/>
+      <inertia ixx="0.0055952" ixy="-3.63221e-08" ixz="1.30536e-09" iyy="0.00866458" iyz="7.93389e-09" izz="0.0055952"/>
+    </inertial>
+    <visual>
+      <origin xyz="9.34916e-07 -0.07845 -1.27325e-07" rpy="1.5708 0.4215 1.22808e-05"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_back_wheel.STL"/></geometry>
+      <material name="right_back_wheel_color"><color rgba="0.698 0.698 0.698 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="9.34916e-07 -0.07845 -1.27325e-07" rpy="1.5708 0.4215 1.22808e-05"/>
+      <geometry><mesh filename="package://drive_description/meshes/right_back_wheel.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="right_back_wheel_joint" type="continuous">
+    <origin xyz="-0.198826 0.0369798 -0.230215" rpy="0 0 0"/>
+    <parent link="right_bogie"/>
+    <child link="right_back_wheel"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="30" velocity="20"/>
+  </joint>
+
+  <link name="left_middle_wheel">
+    <inertial>
+      <origin xyz="-1.4681e-07 0.0313003 -2.42923e-07" rpy="0 0 0"/>
+      <mass value="1.61096"/>
+      <inertia ixx="0.0055952" ixy="-1.35096e-08" ixz="-1.30539e-09" iyy="0.00866458" iyz="-1.7678e-08" izz="0.0055952"/>
+    </inertial>
+    <visual>
+      <origin xyz="-3.34154e-07 0.07845 -3.52108e-07" rpy="1.5708 0.4215 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_middle_wheel.STL"/></geometry>
+      <material name="left_middle_wheel_color"><color rgba="0.698 0.698 0.698 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-3.34154e-07 0.07845 -3.52108e-07" rpy="1.5708 0.4215 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_middle_wheel.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="left_middle_wheel_joint" type="continuous">
+    <origin xyz="0.198645 -0.0369506 -0.230234" rpy="0 0 0"/>
+    <parent link="left_bogie"/>
+    <child link="left_middle_wheel"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="30" velocity="20"/>
+  </joint>
+
+  <link name="left_back_wheel">
+    <inertial>
+      <origin xyz="-1.46884e-07 0.0313003 -2.42847e-07" rpy="0 0 0"/>
+      <mass value="1.61096"/>
+      <inertia ixx="0.0055952" ixy="-1.35096e-08" ixz="-1.30542e-09" iyy="0.00866458" iyz="-1.7678e-08" izz="0.0055952"/>
+    </inertial>
+    <visual>
+      <origin xyz="-3.34154e-07 0.07845 -3.52108e-07" rpy="1.5708 0.4215 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_back_wheel.STL"/></geometry>
+      <material name="left_back_wheel_color"><color rgba="0.698 0.698 0.698 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-3.34154e-07 0.07845 -3.52108e-07" rpy="1.5708 0.4215 -3.14159"/>
+      <geometry><mesh filename="package://drive_description/meshes/left_back_wheel.STL"/></geometry>
+    </collision>
+  </link>
+  <joint name="left_back_wheel_joint" type="continuous">
+    <origin xyz="-0.198955 -0.0369517 -0.230234" rpy="0 0 0"/>
+    <parent link="left_bogie"/>
+    <child link="left_back_wheel"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="30" velocity="20"/>
+  </joint>
+
+</robot>
