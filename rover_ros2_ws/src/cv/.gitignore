@@ -1,0 +1,23 @@
+# Python environments
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Python package artifacts
+*.egg-info/
+.pytest_cache/
+
+# Machine learning weights
+*.onnx
+*.pt
+*.pth
+*.engine
+
+# Training outputs
+runs/
+checkpoints/
+
+# Temporary files
+*.log
+.DS_Store
