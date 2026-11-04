@@ -148,7 +148,7 @@ def launch_setup(context):
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument("controller", default_value="playstation", choices=["playstation", "xbox"]),
+        DeclareLaunchArgument("controller", default_value="playstation5", choices=["playstation5", "playstation4", "xbox"]),
         DeclareLaunchArgument("servo_log_level", default_value="info", choices=["debug", "info", "warn", "error"]),
         OpaqueFunction(function=launch_setup),
     ])
