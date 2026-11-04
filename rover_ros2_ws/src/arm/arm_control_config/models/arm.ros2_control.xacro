@@ -19,14 +19,14 @@
         <plugin>gz_ros2_control/GazeboSimSystem</plugin>
       </hardware>
 
-      <xacro:arm_control_joint joint_name="base" command_interface="${arm_command_interface}"/>
-      <xacro:arm_control_joint joint_name="shoulder" command_interface="${arm_command_interface}"/>
-      <xacro:arm_control_joint joint_name="elbow" command_interface="${arm_command_interface}"/>
-      <xacro:arm_control_joint joint_name="wrist_pitch" command_interface="${arm_command_interface}"/>
-      <xacro:arm_control_joint joint_name="wrist_roll" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="base_mount_to_upper_base" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="upper_base_to_shoulder" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="shoulder_to_elbow" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="elbow_to_wrist" command_interface="${arm_command_interface}"/>
+      <xacro:arm_control_joint joint_name="wrist_to_claw" command_interface="${arm_command_interface}"/>
 
       <!-- A separate controller operates the linear tool joint. -->
-      <xacro:arm_control_joint joint_name="solenoid" command_interface="${solenoid_command_interface}"/>
+      <!-- xacro:arm_control_joint joint_name="solenoid" command_interface="${solenoid_command_interface}"/> -->
 
       <!-- The baseline gripper joint ends in a massless gripper_dummy. Add a physical gripper model/inertia before controlling it in Gazebo. -->
     </ros2_control>
