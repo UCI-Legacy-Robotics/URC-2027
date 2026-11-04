@@ -1,1 +1,0 @@
-controller_joint_names: ['base', 'shoulder', 'elbow', 'wrist_pitch', 'wrist_roll', 'solenoid', 'gripper']
