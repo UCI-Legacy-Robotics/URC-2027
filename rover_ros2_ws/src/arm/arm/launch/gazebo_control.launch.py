@@ -9,7 +9,6 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
-
 def generate_launch_description():
     ld = LaunchDescription()
 
@@ -51,7 +50,7 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_description}],
         arguments=[
             '-name', 'arm', '-param', 'robot_description',
-            '-x', '0.0', '-y', '0.0', '-z', '0.3',
+            '-x', '0.0', '-y', '0.0', '-z', '0.01',
             '-R', '0.0', '-P', '0.0', '-Y', '0.0'
         ],
         output='screen')
