@@ -15,9 +15,9 @@ publish_joint_accelerations: false
 apply_twist_commands_about_ee_frame: true
 
 scale:
-  linear: 0.15       # previously 0.1
-  rotational: 0.4    # previously 0.3
-  joint: 0.3
+  linear: 0.2         # previously 0.1
+  rotational: 0.55    # previously 0.3
+  joint: 0.4          # previously 0.3
   
 use_smoothing: true
 smoothing_filter_plugin_name: online_signal_smoothing::ButterworthFilterPlugin

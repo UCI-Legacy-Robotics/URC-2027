@@ -1,0 +1,20 @@
+arm_teleop:
+  ros__parameters:
+    joint_names: [base, shoulder, elbow, wrist_pitch, wrist_roll]
+    command_frame: base_link
+
+    axes: [0, 1, 2, 5, 6]
+   
+    axis_signs: [1.0, -1.0, 1.0, -1.0, -1.0]
+
+    enable_button: 4         # Hold L1 to move.
+    mode_button: 9           # Options: toggle at neutral with L1 released.
+    yaw_positive_button: 3  # Triangle: Cartesian yaw +.
+    yaw_negative_button: 2  # Circle: Cartesian yaw -.
+
+ 
+    deadzone: 0.1
+    joy_timeout: 0.5
+    linear_speed: 0.15      # m/s
+    angular_speed: 0.3      # rad/s
+    joint_speed: 0.5        # rad/s
