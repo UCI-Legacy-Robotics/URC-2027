@@ -29,7 +29,7 @@ def generate_launch_description():
         Node(
             package='ros_gz_sim',
             executable='create',
-            arguments=['-topic', 'robot_description', '-name', 'drive_description', '-z', '0.02'],
+            arguments=['-topic', 'robot_description', '-name', 'drive_description', '-z', '0.494'],
             output='screen',
         ),
         Node(

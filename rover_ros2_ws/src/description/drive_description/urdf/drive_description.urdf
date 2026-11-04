@@ -1,17 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Converted from the SolidWorks URDF export of "26 MasterCad Suspension-Chassis Test".
      Link frames sit on the real pivots (measured from the meshes); x forward, z up.
-     Joint limits on rockers, bogies and steering are placeholders - set them to the real hardware stops. -->
+     Joint limits on rockers, bogies and steering are placeholders - set them to the real hardware stops.
+     Tree: base_link (massless root, for Nav2 / robot_localization / KDL)
+             ├─ base_footprint (ground plane)
+             └─ chassis_link (chassis body) ─ rockers..., imu_link, gnss_link, zed_camera_link -->
 <robot name="drive_description">
+
+  <link name="base_link"/>
 
   <link name="base_footprint"/>
   <joint name="base_footprint_joint" type="fixed">
-    <origin xyz="0 0 0.473659" rpy="0 0 0"/>
-    <parent link="base_footprint"/>
-    <child link="base_link"/>
+    <origin xyz="0 0 -0.473659" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="base_footprint"/>
   </joint>
 
-  <link name="base_link">
+  <joint name="chassis_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="chassis_link"/>
+  </joint>
+  <link name="chassis_link">
     <inertial>
       <origin xyz="0.000174426 -1.18111e-05 -0.011053" rpy="0 0 0"/>
       <mass value="159.329"/>
@@ -27,6 +37,34 @@
       <geometry><mesh filename="package://drive_description/meshes/base_link.STL"/></geometry>
     </collision>
   </link>
+
+  <!-- Sensor frames. Chassis deck top is at z ~0.13 (middle/front) to ~0.19 (rear) in chassis_link.
+       TODO: all sensor poses are placeholders - measure on hardware. -->
+
+  <!-- Standalone IMU, axes aligned with chassis_link (REP 103). -->
+  <link name="imu_link"/>
+  <joint name="imu_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="chassis_link"/>
+    <child link="imu_link"/>
+  </joint>
+
+  <!-- GNSS antenna phase center (frame_id of the NavSatFix). -->
+  <link name="gnss_link"/>
+  <joint name="gnss_joint" type="fixed">
+    <origin xyz="-0.30 0 0.30" rpy="0 0 0"/>
+    <parent link="chassis_link"/>
+    <child link="gnss_link"/>
+  </joint>
+
+  <!-- ZED 2i on a vertical pole on the rear half, facing +x, pitched ~10 deg down.
+       zed-ros2-wrapper (camera_name: zed, publish_urdf: true) attaches its frames to this link. -->
+  <link name="zed_camera_link"/>
+  <joint name="zed_camera_joint" type="fixed">
+    <origin xyz="-0.20 0 0.79" rpy="0 0.17 0"/>
+    <parent link="chassis_link"/>
+    <child link="zed_camera_link"/>
+  </joint>
 
   <link name="right_rocker">
     <inertial>
@@ -46,7 +84,7 @@
   </link>
   <joint name="right_rocker_joint" type="revolute">
     <origin xyz="0 -0.2857 0" rpy="0 0 0"/>
-    <parent link="base_link"/>
+    <parent link="chassis_link"/>
     <child link="right_rocker"/>
     <axis xyz="0 1 0"/>
     <limit lower="-0.6" upper="0.6" effort="30" velocity="6"/>
@@ -72,7 +110,7 @@
   </link>
   <joint name="left_rocker_joint" type="revolute">
     <origin xyz="0 0.2857 0" rpy="0 0 0"/>
-    <parent link="base_link"/>
+    <parent link="chassis_link"/>
     <child link="left_rocker"/>
     <axis xyz="0 1 0"/>
     <limit lower="-0.6" upper="0.6" effort="30" velocity="6"/>
