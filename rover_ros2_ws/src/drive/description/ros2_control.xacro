@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Include this file in the rover URDF and call this macro once. -->
+  <xacro:macro name="rover_ros2_control" params="name:=RoverSystem hardware_plugin:=mock_components/GenericSystem">
+    <ros2_control name="${name}" type="system">
+      <hardware>
+
+        <plugin>${hardware_plugin}</plugin>
+      </hardware>
+      <joint name = "left_front_wheel_joint">
+        <command_interface name="velocity">
+          <param name = "min">-10</param>
+          <param name = "max">10</param>
+        </command_interface>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name = "right_front_wheel_joint">
+        <command_interface name="velocity">
+          <param name = "min">-10</param>
+          <param name = "max">10</param>
+        </command_interface>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name = "left_middle_wheel_joint">
+        <command_interface name="velocity">
+          <param name = "min">-10</param>
+          <param name = "max">10</param>
+        </command_interface>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name = "right_middle_wheel_joint">
+        <command_interface name="velocity">
+          <param name = "min">-10</param>
+          <param name = "max">10</param>
+        </command_interface>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name = "left_back_wheel_joint">
+        <command_interface name="velocity">
+          <param name = "min">-10</param>
+          <param name = "max">10</param>
+        </command_interface>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name = "right_back_wheel_joint">
+        <command_interface name="velocity">
+          <param name = "min">-10</param>
+          <param name = "max">10</param>
+        </command_interface>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+    </ros2_control>
+  </xacro:macro>
+</robot>
