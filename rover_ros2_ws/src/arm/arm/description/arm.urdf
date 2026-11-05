@@ -162,8 +162,8 @@
     <limit
       lower="-1.57079"
       upper="1.57079"
-      effort="0"
-      velocity="0" />
+      effort="50.0"
+      velocity="1.0" />
   </joint>
   <link
     name="elbow">
@@ -220,8 +220,8 @@
     <limit
       lower="-1.57079"
       upper="1.57079"
-      effort="0"
-      velocity="0" />
+      effort="50.0"
+      velocity="1.0" />
   </joint>
   <link
     name="wrist">
@@ -278,8 +278,8 @@
     <limit
       lower="-1.57079"
       upper="1.57079"
-      effort="0"
-      velocity="0" />
+      effort="50.0"
+      velocity="1.0" />
   </joint>
   <link
     name="claw">
