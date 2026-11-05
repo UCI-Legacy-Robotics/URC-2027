@@ -1,7 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <cv_bridge/cv_bridge.hpp>
-
+#include <cv_interfaces/msg/keypoints.hpp>
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
 
@@ -80,6 +80,13 @@ public:
         annotated_publisher_ =
             this->create_publisher<sensor_msgs::msg::Image>(
                 "/cv/pose/annotated",
+                rclcpp::SensorDataQoS()
+            );
+
+        //publisher for COCO keypoints
+        keypoints_publisher_ =
+            this->create_publisher<cv_interfaces::msg::Keypoints>(
+                "/cv/pose/keypoints",
                 rclcpp::SensorDataQoS()
             );
 
@@ -226,7 +233,7 @@ private:
         }
     }
 
-    void process_detections(const cv::Mat &output, cv::Mat &frame, const LetterboxInfo &info) {
+    void process_detections(const cv::Mat &output, cv::Mat &frame, const LetterboxInfo &info, const std_msgs::msg::Header &header) {
         if (output.dims != 3 || output.size[0] != 1 || output.size[2] != DETECTION_SIZE || output.type() != CV_32F) {
             throw std::runtime_error(
                 "Unexpected YOLO output shape or type. "
@@ -237,6 +244,14 @@ private:
         const int num_detections = output.size[1];
 
         const float *data = output.ptr<float>();
+
+        //one keypoint message per processed frame, including no-detection frames
+        cv_interfaces::msg::Keypoints keypoints_msg;
+        keypoints_msg.header = header;
+        keypoints_msg.detected = false;
+        keypoints_msg.person_confidence = 0.0f;
+
+        float best_confidence = -1.0f;
 
         for (int i = 0; i < num_detections; i++) {
             const float *det = data + i * DETECTION_SIZE;
@@ -282,6 +297,19 @@ private:
 
             draw_skeleton(frame, points, scores);
 
+            //select highest-confidence person for downstream recognition
+            if (confidence > best_confidence) {
+                best_confidence = confidence;
+                keypoints_msg.detected = true;
+                keypoints_msg.person_confidence = confidence;
+
+                for (int k = 0; k < NUM_KEYPOINTS; k++) {
+                    keypoints_msg.x[k] = points[k].x;
+                    keypoints_msg.y[k] = points[k].y;
+                    keypoints_msg.confidence[k] = scores[k];
+                }
+            }
+
             cv::putText(
                 frame,
                 cv::format("Person %.2f", confidence),
@@ -292,6 +320,8 @@ private:
                 2
             );
         }
+
+        keypoints_publisher_->publish(keypoints_msg);
     }
 
     void image_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
@@ -406,7 +436,7 @@ private:
             );
 
             //decode detections and draw skeleton
-            process_detections(output, frame, info);
+            process_detections(output, frame, info, msg->header);
 
             //publish annotated frame
             auto annotated_msg =
@@ -452,6 +482,8 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_subscriber_;
 
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr annotated_publisher_;
+
+    rclcpp::Publisher<cv_interfaces::msg::Keypoints>::SharedPtr keypoints_publisher_;
 };
 
 int main(int argc, char **argv)

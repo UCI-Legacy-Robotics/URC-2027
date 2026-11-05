@@ -23,6 +23,8 @@ find_library(ONNXRUNTIME_LIBRARY onnxruntime
     REQUIRED
 )
 
+find_package(cv_interfaces REQUIRED)
+
 add_executable(
     pose_node
     src/pose_node.cpp
@@ -33,6 +35,7 @@ ament_target_dependencies(
     rclcpp
     sensor_msgs
     cv_bridge
+    cv_interfaces
 )
 
 target_include_directories(
