@@ -2,25 +2,34 @@
 <!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
-<robot name="arm">
+<robot
+  name="arm">
 
   <link name="world"/>
+
+<joint name="world_to_base_joint" type="fixed">
+  <parent link="world"/>
+  <child link="base_mount"/>
+  <origin xyz="0 0 0" rpy="0 1.57079632679 0"/>
+</joint>
+
+<!-- Removed duplicate empty base_mount link. Full link definition follows. -->
 
   <link
     name="base_mount">
     <inertial>
       <origin
-        xyz="-0.0640838077637677 -0.00380573228195243 3.9138729405892E-06"
+        xyz="-0.0640838077637683 -0.0038057322819506 3.91387294123116E-06"
         rpy="0 0 0" />
       <mass
-        value="0.59157401987426" />
+        value="0.591574019874226" />
       <inertia
-        ixx="0.000870168358145803"
-        ixy="-1.17603540908092E-05"
-        ixz="8.6028402602995E-09"
-        iyy="0.000796476802979191"
-        iyz="1.83918798139327E-05"
-        izz="0.000704573673874701" />
+        ixx="0.000870168358145761"
+        ixy="-1.17603540908235E-05"
+        ixz="8.60284025465383E-09"
+        iyy="0.000796476802979171"
+        iyz="1.83918798139432E-05"
+        izz="0.000704573673874671" />
     </inertial>
     <visual>
       <origin
@@ -31,7 +40,7 @@
           filename="package://arm/meshes/base_mount.STL" />
       </geometry>
       <material
-        name="">
+        name="base_mount_material">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -46,28 +55,20 @@
       </geometry>
     </collision>
   </link>
-
-  <joint name="world_to_base" type="fixed">
-    <parent link="world"/>
-    <child link="base_mount"/>
-    <origin xyz="0 0 0.1" rpy="0 1.5707963 0"/>
-  </joint>
-
-
   <link
     name="upper_base">
     <inertial>
       <origin
-        xyz="-0.0351205770439988 -0.000869324396949071 -0.000463213442064245"
+        xyz="-0.0351205770439988 -0.000869324396949069 -0.000463213442064243"
         rpy="0 0 0" />
       <mass
         value="1.06934512317077" />
       <inertia
         ixx="0.00126945735874959"
-        ixy="-4.77017991835107E-08"
-        ixz="-7.75746032931992E-09"
+        ixy="-4.77017991835072E-08"
+        ixz="-7.75746032930936E-09"
         iyy="0.000925128336935432"
-        iyz="-3.17105312609711E-08"
+        iyz="-3.17105312610118E-08"
         izz="0.000959443396568287" />
     </inertial>
     <visual>
@@ -79,7 +80,7 @@
           filename="package://arm/meshes/upper_base.STL" />
       </geometry>
       <material
-        name="">
+        name="upper_base_material">
         <color
           rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
       </material>
@@ -111,16 +112,16 @@
     name="shoulder">
     <inertial>
       <origin
-        xyz="-0.213598241758623 -7.18226217254177E-05 -0.00598898095341378"
+        xyz="-0.213598241758623 -7.18226217215623E-05 -0.00598898095342152"
         rpy="0 0 0" />
       <mass
-        value="0.646937695151706" />
+        value="0.646937695151705" />
       <inertia
         ixx="0.000372557221562043"
-        ixy="6.77959480616742E-08"
+        ixy="6.77959480617512E-08"
         ixz="-6.01708578942344E-05"
         iyy="0.00374766562354693"
-        iyz="-2.63835453100304E-07"
+        iyz="-2.63835453100087E-07"
         izz="0.00362636474843872" />
     </inertial>
     <visual>
@@ -132,7 +133,7 @@
           filename="package://arm/meshes/shoulder.STL" />
       </geometry>
       <material
-        name="">
+        name="shoulder_material">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -160,23 +161,23 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="-1.57079"
-      upper="1.57079"
-      effort="50.0"
-      velocity="1.0" />
+      lower="0"
+      upper="3.14"
+      effort="0"
+      velocity="0" />
   </joint>
   <link
     name="elbow">
     <inertial>
       <origin
-        xyz="0.197873266694039 -2.97138129838892E-05 -0.000433935926540917"
+        xyz="0.197873266694039 -2.97138129840002E-05 -0.000433935926540931"
         rpy="0 0 0" />
       <mass
         value="1.07687058787133" />
       <inertia
         ixx="0.000388390698119508"
-        ixy="-1.16436945619446E-08"
-        ixz="2.82515256596113E-08"
+        ixy="-1.16436945614266E-08"
+        ixz="2.82515256598146E-08"
         iyy="0.00390954496101124"
         iyz="9.03773178487238E-06"
         izz="0.00402535053059931" />
@@ -190,7 +191,7 @@
           filename="package://arm/meshes/elbow.STL" />
       </geometry>
       <material
-        name="">
+        name="elbow_material">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -218,10 +219,10 @@
     <axis
       xyz="0 0.076985 0.99703" />
     <limit
-      lower="-1.57079"
-      upper="1.57079"
-      effort="50.0"
-      velocity="1.0" />
+      lower="0"
+      upper="3.14"
+      effort="0"
+      velocity="0" />
   </joint>
   <link
     name="wrist">
@@ -233,8 +234,8 @@
         value="0.417792488776294" />
       <inertia
         ixx="0.00073448460150239"
-        ixy="-2.24237238449347E-05"
-        ixz="1.21888691789163E-06"
+        ixy="-2.24237238449348E-05"
+        ixz="1.21888691789165E-06"
         iyy="0.000584065073359585"
         iyz="-1.11856441402096E-05"
         izz="0.000376328425551866" />
@@ -248,7 +249,7 @@
           filename="package://arm/meshes/wrist.STL" />
       </geometry>
       <material
-        name="">
+        name="wrist_material">
         <color
           rgba="1 1 1 1" />
       </material>
@@ -274,28 +275,28 @@
     <child
       link="wrist" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0.05346 0.99857" />
     <limit
-      lower="-1.57079"
-      upper="1.57079"
-      effort="50.0"
-      velocity="1.0" />
+      lower="0"
+      upper="3.14"
+      effort="0"
+      velocity="0" />
   </joint>
   <link
     name="claw">
     <inertial>
       <origin
-        xyz="0.137931691198093 0.00405324693934839 -0.00150482915041403"
+        xyz="0.0901040852069357 0.00621618026954973 -0.00249760882473078"
         rpy="0 0 0" />
       <mass
-        value="0.598588085305749" />
+        value="0.39113278296521" />
       <inertia
-        ixx="0.0002413475790735"
-        ixy="5.06797587092344E-07"
-        ixz="-2.40202568262099E-06"
-        iyy="0.000556868768848304"
-        iyz="-2.98292360621273E-05"
-        izz="0.000489163780978595" />
+        ixx="0.00019195597732978"
+        ixy="-2.05720408478896E-07"
+        ixz="-1.31495391312807E-06"
+        iyy="0.000419942398260722"
+        iyz="-3.47747724282152E-05"
+        izz="0.000337893728576509" />
     </inertial>
     <visual>
       <origin
@@ -306,7 +307,7 @@
           filename="package://arm/meshes/claw.STL" />
       </geometry>
       <material
-        name="">
+        name="claw_material">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -333,5 +334,230 @@
       link="claw" />
     <axis
       xyz="1 0 0" />
+  </joint>
+  <link
+    name="claw_camera">
+    <inertial>
+      <origin
+        xyz="-0.00551708414746765 1.11022302462516E-16 5.55111512312578E-17"
+        rpy="0 0 0" />
+      <mass
+        value="0.00417349427012737" />
+      <inertia
+        ixx="3.83423125360445E-07"
+        ixy="-2.85377311330795E-22"
+        ixz="1.19114008207636E-22"
+        iyy="2.13784771723874E-07"
+        iyz="-5.55865371635635E-22"
+        izz="2.13025771723873E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://arm/meshes/claw_camera.STL" />
+      </geometry>
+      <material
+        name="claw_camera_material">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://arm/meshes/claw_camera.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="claw_to_camera"
+    type="fixed">
+    <origin
+      xyz="0.14513 -0.047004 0.017283"
+      rpy="2.7912 0 0" />
+    <parent
+      link="claw" />
+    <child
+      link="claw_camera" />
+  </joint>
+  <link
+    name="left_gripper">
+    <inertial>
+      <origin
+        xyz="-0.0217179274028694 -0.000297928918946644 -0.0591897920458837"
+        rpy="0 0 0" />
+      <mass
+        value="0.104495072975078" />
+      <inertia
+        ixx="7.77007752445732E-05"
+        ixy="-4.23623010446303E-07"
+        ixz="3.96319090031728E-06"
+        iyy="6.88965230454185E-05"
+        iyz="1.0714885871022E-06"
+        izz="2.51564843400612E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://arm/meshes/left_gripper.STL" />
+      </geometry>
+      <material
+        name="left_gripper_material">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://arm/meshes/left_gripper.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="claw_to_left_grip"
+    type="prismatic">
+    <origin
+      xyz="0.28747 0.0096667 0.026221"
+      rpy="-1.5704 1.2205 -1.5704" />
+    <parent
+      link="claw" />
+    <child
+      link="left_gripper" />
+    <axis
+      xyz="0.64434 0 0.76474" />
+    <limit
+      lower="0"
+      upper="0.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="solenoid">
+    <inertial>
+      <origin
+        xyz="-0.0339324825192029 3.73631118277817E-05 -5.55111512312578E-17"
+        rpy="0 0 0" />
+      <mass
+        value="0.0079458185156458" />
+      <inertia
+        ixx="2.8956853004622E-07"
+        ixy="3.16925129611391E-10"
+        ixz="-1.69646003293857E-09"
+        iyy="1.12773832626975E-06"
+        iyz="2.38228016415272E-22"
+        izz="1.18165470220663E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://arm/meshes/solenoid.STL" />
+      </geometry>
+      <material
+        name="solenoid_material">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://arm/meshes/solenoid.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="grip_to_solenoid"
+    type="prismatic">
+    <origin
+      xyz="-0.039072 -0.03021 -0.002032"
+      rpy="0 -1.5708 0" />
+    <parent
+      link="left_gripper" />
+    <child
+      link="solenoid" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="0"
+      upper="0.015"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="right_gripper">
+    <inertial>
+      <origin
+        xyz="-0.0214327311762764 3.60367735652289E-10 -0.0595433233424318"
+        rpy="0 0 0" />
+      <mass
+        value="0.102960588235202" />
+      <inertia
+        ixx="7.50602919399732E-05"
+        ixy="-5.89954698794796E-13"
+        ixz="3.21072860994957E-06"
+        iyy="6.65407745872245E-05"
+        iyz="-2.04695050332603E-12"
+        izz="2.42336642646434E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://arm/meshes/right_gripper.STL" />
+      </geometry>
+      <material
+        name="right_gripper_material">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://arm/meshes/right_gripper.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="claw_to_right_grip"
+    type="prismatic">
+    <origin
+      xyz="0.28747 -0.0096628 -0.02621"
+      rpy="1.5709 -1.2205 1.5707" />
+    <parent
+      link="claw" />
+    <child
+      link="right_gripper" />
+    <axis
+      xyz="0.63991 0 0.76845" />
+    <limit
+      lower="0"
+      upper="0.05"
+      effort="0"
+      velocity="0" />
   </joint>
 </robot>
