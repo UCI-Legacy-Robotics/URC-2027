@@ -10,52 +10,28 @@
     <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
     <group name="arm">
-        <link name="base_mount"/>
-        <link name="base_link"/>
-        <link name="wrist_pitch_link"/>
-        <link name="shoulder_link"/>
-        <link name="elbow_Link"/>
-        <link name="wrist_roll_link"/>
-        <joint name="base"/>
-        <joint name="base_dummy_joint"/>
-        <joint name="elbow"/>
-        <joint name="shoulder"/>
-        <joint name="virtual_joint"/>
-        <joint name="world_to_dummy"/>
-        <joint name="wrist_pitch"/>
-        <joint name="wrist_roll"/>
+        <joint name="world_to_base"/>
+        <joint name="base_mount_to_upper_base"/>
+        <joint name="upper_base_to_shoulder"/>
+        <joint name="shoulder_to_elbow"/>
+        <joint name="elbow_to_wrist"/>
+        <joint name="wrist_to_claw"/>
     </group>
-    <!--GROUP STATES: Purpose: Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
-    <group_state name="snake_pose" group="arm">
-        <joint name="base" value="-0.232"/>
-        <joint name="elbow" value="-0.4177"/>
-        <joint name="shoulder" value="1.0823"/>
-        <joint name="wrist_pitch" value="0.7829"/>
-        <joint name="wrist_roll" value="0"/>
-    </group_state>
-    <group_state name="fully_vertical" group="arm">
-        <joint name="base" value="0"/>
-        <joint name="elbow" value="2.0807"/>
-        <joint name="shoulder" value="0.3144"/>
-        <joint name="wrist_pitch" value="0.7829"/>
-        <joint name="wrist_roll" value="0"/>
-    </group_state>
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
-    <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base_dummy"/>
-    <!--PASSIVE JOINT: Purpose: this element is used to mark joints that are not actuated-->
-    <passive_joint name="gripper"/>
-    <passive_joint name="solenoid"/>
+    <virtual_joint name="world_to_base" type="fixed" parent_frame="world" child_link="base_mount"/>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
-    <disable_collisions link1="base_link" link2="base_mount" reason="Adjacent"/>
-    <disable_collisions link1="base_link" link2="elbow_Link" reason="Never"/>
-    <disable_collisions link1="base_link" link2="shoulder_link" reason="Adjacent"/>
-    <disable_collisions link1="base_mount" link2="elbow_Link" reason="Never"/>
-    <disable_collisions link1="base_mount" link2="shoulder_link" reason="Never"/>
-    <disable_collisions link1="elbow_Link" link2="shoulder_link" reason="Adjacent"/>
-    <disable_collisions link1="elbow_Link" link2="solenoid_link" reason="Never"/>
-    <disable_collisions link1="elbow_Link" link2="wrist_pitch_link" reason="Adjacent"/>
-    <disable_collisions link1="elbow_Link" link2="wrist_roll_link" reason="Never"/>
-    <disable_collisions link1="solenoid_link" link2="wrist_pitch_link" reason="Never"/>
-    <disable_collisions link1="solenoid_link" link2="wrist_roll_link" reason="Adjacent"/>
-    <disable_collisions link1="wrist_pitch_link" link2="wrist_roll_link" reason="Adjacent"/>
+    <disable_collisions link1="base_mount" link2="elbow" reason="Never"/>
+    <disable_collisions link1="base_mount" link2="shoulder" reason="Never"/>
+    <disable_collisions link1="base_mount" link2="upper_base" reason="Adjacent"/>
+    <disable_collisions link1="base_mount" link2="wrist" reason="Never"/>
+    <disable_collisions link1="claw" link2="elbow" reason="Never"/>
+    <disable_collisions link1="claw" link2="shoulder" reason="Never"/>
+    <disable_collisions link1="claw" link2="upper_base" reason="Never"/>
+    <disable_collisions link1="claw" link2="wrist" reason="Adjacent"/>
+    <disable_collisions link1="elbow" link2="shoulder" reason="Adjacent"/>
+    <disable_collisions link1="elbow" link2="upper_base" reason="Never"/>
+    <disable_collisions link1="elbow" link2="wrist" reason="Adjacent"/>
+    <disable_collisions link1="shoulder" link2="upper_base" reason="Adjacent"/>
+    <disable_collisions link1="shoulder" link2="wrist" reason="Never"/>
+    <disable_collisions link1="upper_base" link2="wrist" reason="Never"/>
 </robot>

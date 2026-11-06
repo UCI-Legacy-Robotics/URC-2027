@@ -5,9 +5,9 @@ moveit_setup_assistant_config:
   srdf:
     relative_path: config/arm.srdf
   package_settings:
-    author_name: Aidan Aoun
+    author_name: aidan aoun
     author_email: aaaoun@uci.edu
-    generated_timestamp: 1793170032
+    generated_timestamp: 1793782609
   control_xacro:
     command:
       - position
