@@ -13,7 +13,7 @@
   </xacro:macro>
 
 
-  <xacro:macro name="arm_sim_ros2_control" params="arm_command_interface:=position solenoid_command_interface:=position">
+  <xacro:macro name="arm_sim_ros2_control" params="arm_command_interface:=position">
     <ros2_control name="ArmGazeboSystem" type="system">
       <hardware>
         <plugin>gz_ros2_control/GazeboSimSystem</plugin>

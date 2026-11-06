@@ -11,7 +11,7 @@
   <!-- These modes must match command_interfaces in the controller YAML.
        Position commands are a simulation starting point, not a claim about
        the physical motors' command modes. -->
-  <xacro:arm_sim_ros2_control arm_command_interface="position" solenoid_command_interface="position"/>
+  <xacro:arm_sim_ros2_control arm_command_interface="position"/>
 
   <xacro:arm_gazebo controllers_file="$(arg controllers_file)"/>
 </robot>
