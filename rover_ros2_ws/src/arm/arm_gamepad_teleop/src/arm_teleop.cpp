@@ -20,11 +20,32 @@ using Clock = std::chrono::steady_clock;
 class ArmTeleop : public rclcpp::Node
 {
 public:
+  std::vector<std::string> joint_names_;
+  std::string frame_;
+  std::vector<int64_t> axes_;
+  std::vector<double> signs_;
+  int enable_button_, mode_button_, wrist_negative_, wrist_positive_, yaw_positive_, yaw_negative_;
+  double deadzone_, timeout_, linear_speed_, angular_speed_, joint_speed_;
+  std::array<double, 5> inputs_{};
+  double yaw_ = 0.0;
+  bool have_input_ = false, enable_ = false, armed_ = false;
+  bool cartesian_ = false, previous_mode_button_ = false;
+  bool mode_ready_ = false, mode_pending_ = false;
+  int64_t mode_request_id_ = 0;
+  Clock::time_point last_input_{}, next_mode_attempt_{}, mode_request_time_{};
+
+  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr twist_publisher_;
+  rclcpp::Publisher<control_msgs::msg::JointJog>::SharedPtr joint_publisher_;
+  rclcpp::Client<ServoCommand>::SharedPtr mode_client_;
+  rclcpp::TimerBase::SharedPtr timer_;
+
+
   ArmTeleop() : Node("arm_teleop")
   {
     joint_names_ = declare_parameter<std::vector<std::string>>(
-      "joint_names", {"base", "shoulder", "elbow", "wrist_pitch", "wrist_roll"});
-    frame_ = declare_parameter("command_frame", "base_link");
+      "joint_names", {"base_mount_to_upper_base", "upper_base_to_shoulder", "shoulder_to_elbow", "elbow_to_wrist", "wrist_to_claw"});
+    frame_ = declare_parameter("command_frame", "base_mount");
     enable_button_ = declare_parameter("enable_button", 9);
     mode_button_ = declare_parameter("mode_button", 6);
     axes_ = declare_parameter<std::vector<int64_t>>("axes", {0, 1, 2, 3});
@@ -38,6 +59,7 @@ public:
     linear_speed_ = declare_parameter("linear_speed", 0.15);   // original value 0.15
     angular_speed_ = declare_parameter("angular_speed", 0.3);  // original value 0.3
     joint_speed_ = declare_parameter("joint_speed", 0.5);      // original value 0.5
+
 
     if (joint_names_.size() != 5 || (axes_.size() != 4 && axes_.size() != 5) || signs_.size() != axes_.size() ||
         deadzone_ < 0.0 || deadzone_ >= 1.0 || timeout_ <= 0.0 ||
@@ -205,25 +227,6 @@ private:
     }
   }
 
-  std::vector<std::string> joint_names_;
-  std::string frame_;
-  std::vector<int64_t> axes_;
-  std::vector<double> signs_;
-  int enable_button_, mode_button_, wrist_negative_, wrist_positive_, yaw_positive_, yaw_negative_;
-  double deadzone_, timeout_, linear_speed_, angular_speed_, joint_speed_;
-  std::array<double, 5> inputs_{};
-  double yaw_ = 0.0;
-  bool have_input_ = false, enable_ = false, armed_ = false;
-  bool cartesian_ = false, previous_mode_button_ = false;
-  bool mode_ready_ = false, mode_pending_ = false;
-  int64_t mode_request_id_ = 0;
-  Clock::time_point last_input_{}, next_mode_attempt_{}, mode_request_time_{};
-
-  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
-  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr twist_publisher_;
-  rclcpp::Publisher<control_msgs::msg::JointJog>::SharedPtr joint_publisher_;
-  rclcpp::Client<ServoCommand>::SharedPtr mode_client_;
-  rclcpp::TimerBase::SharedPtr timer_;
 };
 
 int main(int argc, char ** argv)
