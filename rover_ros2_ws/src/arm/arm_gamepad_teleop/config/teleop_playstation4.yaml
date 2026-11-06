@@ -1,7 +1,7 @@
 arm_teleop:
   ros__parameters:
-    joint_names: [base, shoulder, elbow, wrist_pitch, wrist_roll]
-    command_frame: base_link
+    joint_names: [base_mount_to_upper_base, upper_base_to_shoulder, shoulder_to_elbow, elbow_to_wrist, wrist_to_claw]
+    command_frame: base_mount
 
     axes: [0, 1, 2, 5, 6]
    
