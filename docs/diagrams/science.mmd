@@ -1,0 +1,55 @@
+flowchart LR
+    subgraph ROVER["Rover (ROS 2)"]
+        subgraph SCI["Science subsystem"]
+            SEQ["science sequencer<br/>state machine, ROS actions:<br/>bradford / npk / pano"]
+            subgraph EMB["Embedded nodes"]
+                DRILL["drill"]
+                MIXER["mixer"]
+                SPEC["spectrophotometer"]
+                NPK["NPK sensor"]
+            end
+            PANO["pano pipeline<br/>(see pano diagram)"]
+        end
+
+        SCICAM["science camera node<br/>A219"]
+        MEDIA["media file server<br/>(panoramas, science photos)"]
+        TELEM["rover_telemetry<br/>(ROS ↔ MAVLink)"]
+    end
+
+    subgraph LINKS["Radio links"]
+        R900(["900 MHz<br/>commands, status, results, ready flags"])
+        R5G(["5 GHz<br/>media files"])
+    end
+
+    subgraph BASE["Base station (no ROS)"]
+        BACK["gui/backend<br/>(Python)"]
+        FRONT["gui/frontend"]
+    end
+
+    %% Control and status
+    FRONT <-->|"WebSocket"| BACK
+    BACK <--> R900
+    R900 <--> TELEM
+    TELEM -->|"action goal: start / cancel"| SEQ
+    SEQ -->|"action feedback + result"| TELEM
+
+    %% Bradford sequence
+    SEQ -->|"1. lower / raise"| DRILL
+    SEQ -->|"2. run"| MIXER
+    SEQ -->|"3. measure"| SPEC
+    SPEC -->|"absorbance"| SEQ
+    SEQ -->|"photo of drill site"| SCICAM
+    SCICAM -->|"full-res photo"| MEDIA
+
+    %% NPK sequence
+    SEQ -->|"lower + measure"| NPK
+    NPK -->|"N, P, K readings"| SEQ
+
+    %% Pano sequence
+    SEQ -->|"run pano"| PANO
+    PANO -->|"annotated panorama"| MEDIA
+
+    %% File delivery
+    MEDIA -->|"HTTP download"| R5G
+    R5G --> BACK
+    BACK -->|"panoramas + photos (HTTP)"| FRONT
