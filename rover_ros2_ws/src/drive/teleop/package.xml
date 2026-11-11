@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-<name>drive_description</name><version>0.0.1</version>
+<name>teleop</name><version>0.0.1</version>
 <description>Six-wheel rover control bringup.</description>
 <maintainer email="robotics@uci.edu">UCI Legacy Robotics</maintainer>
 <license>Apache-2.0</license>

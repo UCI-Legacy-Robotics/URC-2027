@@ -6,7 +6,7 @@ from launch_ros.actions import Node
 import xacro
 
 def generate_launch_description():
-    share = Path(get_package_share_directory('drive_description'))
+    share = Path(get_package_share_directory('teleop'))
     description = xacro.process_file(
         str(share / 'description/drive_description.urdf'),
         mappings={'hardware_plugin': 'mock_components/GenericSystem'}).toxml()
