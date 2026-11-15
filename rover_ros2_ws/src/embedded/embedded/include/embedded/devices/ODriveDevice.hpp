@@ -2,11 +2,14 @@
 
 #include "embedded/core/CanDevice.hpp"
 #include "embedded/core/CanFrame.hpp"
-#include "embedded/core/ServiceTx.hpp"
+#include "embedded/messages/ImmediateMessage.hpp"
+#include "embedded/messages/PeriodicMessage.hpp"
+#include "embedded/messages/ServiceMessage.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -20,6 +23,8 @@ public:
 
   // ODrive Axis States (CANSimple CMD 0x007)
   static constexpr uint32_t kAxisStateIdle = 1;
+  static constexpr uint32_t kAxisStateFullCalibration = 3;
+  static constexpr uint32_t kAxisStateEncoderOffsetCalibration = 7;
   static constexpr uint32_t kAxisStateClosedLoop = 8;
 
   ODriveDevice(
@@ -28,29 +33,33 @@ public:
       std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(100),
       std::chrono::milliseconds control_timeout = std::chrono::milliseconds(50));
 
-  // --- Continuous Setpoints (Sent Periodically by tx_loop) ---
+  // --- Continuous Setpoints (Sampled at 200 Hz by setpoint_periodic_) ---
   void set_pos(float pos_rev) noexcept;
   void set_vel(float vel_rev_s) noexcept;
   void set_torque(float torque_nm) noexcept;
 
-  // --- Telemetry Getters (Updated Lock-Free by rx_loop) ---
+  // --- Lock-Free Telemetry Getters (Updated by rx_loop) ---
   float get_pos() const noexcept { return pos_est_.load(std::memory_order_acquire); }
   float get_vel() const noexcept { return vel_est_.load(std::memory_order_acquire); }
   float get_torque() const noexcept { return torque_est_.load(std::memory_order_acquire); }
-  uint32_t get_axis_state() const noexcept { return current_axis_state_.load(std::memory_order_acquire); }
-  uint32_t get_axis_error() const noexcept { return axis_error_.load(std::memory_order_acquire); }
+  uint32_t get_axis_state() const noexcept {
+    return current_axis_state_.load(std::memory_order_acquire);
+  }
+  uint32_t get_axis_error() const noexcept {
+    return axis_error_.load(std::memory_order_acquire);
+  }
 
-  // --- Service Message with ACK (Retries until Heartbeat confirms target state) ---
+  // --- Service Message With ACK (Retries until Heartbeat confirms target state) ---
   bool set_axis(uint32_t requested_state);
-  ServiceState axis_service_state() const noexcept { return axis_service_.state(); }
+  ServiceState axis_service_state() const noexcept { return axis_service_->state(); }
+  bool check_and_clear_axis_ack() { return axis_service_->take_response().has_value(); }
 
-  // --- Immediate Message (Dispatched immediately, no retries) ---
+  // --- Immediate One-Shot Commands ---
   bool set_origin(float origin_pos_rev = 0.0f);
+  bool clear_errors();
 
 protected:
   void on_rx(const CanFrame& frame) override;
-  std::optional<CanFrame> on_periodic_tx(uint8_t task_id) override;
-  std::optional<CanFrame> on_safe_tx(uint8_t task_id) override;
 
 private:
   // ODrive CANSimple Command IDs
@@ -60,8 +69,12 @@ private:
   static constexpr uint8_t kCmdSetInputPos = 0x00C;
   static constexpr uint8_t kCmdSetInputVel = 0x00D;
   static constexpr uint8_t kCmdSetInputTorque = 0x00E;
+  static constexpr uint8_t kCmdClearErrors = 0x018;
   static constexpr uint8_t kCmdSetAbsolutePos = 0x019;
   static constexpr uint8_t kCmdGetTorques = 0x01C;
+
+  std::optional<CanFrame> build_normal_setpoint_frame() const noexcept;
+  std::optional<CanFrame> build_safe_setpoint_frame() const noexcept;
 
   static void pack_float(uint8_t* dst, float val) noexcept;
   static void pack_u32(uint8_t* dst, uint32_t val) noexcept;
@@ -80,7 +93,11 @@ private:
   std::atomic<float> torque_est_{0.0f};
   std::atomic<uint32_t> current_axis_state_{0};
   std::atomic<uint32_t> axis_error_{0};
-
   std::atomic<uint32_t> expected_axis_state_{0};
-  ServiceTx axis_service_;
+
+  // Explicit TX Message Members
+  std::shared_ptr<PeriodicMessage> setpoint_periodic_;
+  std::shared_ptr<ServiceChannel> axis_service_;
+  ImmediateCommand set_origin_cmd_;
+  ImmediateCommand clear_errors_cmd_;
 };

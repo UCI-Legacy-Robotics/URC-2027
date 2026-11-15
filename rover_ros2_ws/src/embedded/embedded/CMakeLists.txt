@@ -9,40 +9,54 @@ find_package(ament_cmake REQUIRED)
 find_package(Threads REQUIRED)
 find_package(rclcpp REQUIRED)
 
-# 1. CORE LIBRARY (SocketCAN Manager, Device Base Class, ServiceTx)
+# ==============================================================================
+# 1. CORE LIBRARY (SocketCAN Manager, Base Device, & Polymorphic TxMessages)
+# ==============================================================================
 add_library(CanManagerCore SHARED
   src/core/CanDevice.cpp
   src/core/CanManager.cpp
-  src/core/ServiceTx.cpp
+  src/messages/ImmediateMessage.cpp
+  src/messages/PeriodicMessage.cpp
+  src/messages/ServiceMessage.cpp
 )
+
 target_compile_features(CanManagerCore PUBLIC cxx_std_17)
+
 target_include_directories(CanManagerCore
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+
 target_link_libraries(CanManagerCore
   PUBLIC
     Threads::Threads
 )
 
-# 2. CONCRETE DEVICE DRIVERS (Inherits C++17, include paths, and Threads from CanManagerCore)
+# ==============================================================================
+# 2. CONCRETE DEVICE DRIVERS (Inherits C++17, include paths, & Threads)
+# ==============================================================================
 add_library(CanDevices SHARED
   src/devices/ODriveDevice.cpp
 )
+
 target_link_libraries(CanDevices
   PUBLIC
     CanManagerCore
 )
 
-# 3. OPTIONAL STANDALONE TEST EXECUTABLE (Built automatically if src/main.cpp exists)
+# ==============================================================================
+# 3. OPTIONAL STANDALONE TEST EXECUTABLE
+# ==============================================================================
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
   add_executable(odrive_test src/main.cpp)
   target_link_libraries(odrive_test PRIVATE CanDevices)
   install(TARGETS odrive_test DESTINATION lib/${PROJECT_NAME})
 endif()
 
-# INSTALLATION AND EXPORTS
+# ==============================================================================
+# 4. INSTALLATION & AMENT EXPORTS
+# ==============================================================================
 install(
   TARGETS CanManagerCore CanDevices
   EXPORT export_embedded_pkg

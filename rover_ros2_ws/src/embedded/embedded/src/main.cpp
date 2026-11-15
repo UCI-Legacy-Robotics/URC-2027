@@ -8,12 +8,10 @@
 using namespace std::chrono_literals;
 
 int main(int argc, char** argv) {
-  // Defaults to "can0"; pass "vcan0" on CLI to test on a virtual CAN interface
-  const std::string interface_name = (argc > 1) ? argv[1] : "can0";
+  const std::string interface_name = (argc > 1) ? argv[1] : "vcan0";
 
-  // 1. Get singleton CanManager and register ODrive on node_id = 1
   auto can_mgr = CanManager::get_instance(interface_name);
-  auto odrive = can_mgr->get_or_register_device<ODriveDevice>("wheel_motor", /*node_id=*/1);
+  auto odrive = can_mgr->get_or_register_device<ODriveDevice>("wheel_motor", /*node_id=*/1, /*rx_timeout=*/0ms, /*control_timeout=*/0ms);
 
   std::cout << "Registered '" << odrive->name() << "' on " << interface_name << "\n";
 
@@ -37,10 +35,10 @@ int main(int argc, char** argv) {
   }
 
   // 4. Run a 50 Hz control & telemetry loop demonstrating vel, pos, and torque modes
-  for (int step = 0; step < 150; ++step) {
-    if (step < 50) {
+  for (int step = 0; step < 1000; ++step) {
+    if (step < 333) {
       odrive->set_vel(2.5f);      // First 1.0s: Velocity control (2.5 rev/s)
-    } else if (step < 100) {
+    } else if (step < 666) {
       odrive->set_pos(10.0f);     // Next 1.0s:  Position control (10.0 rev)
     } else {
       odrive->set_torque(0.4f);   // Last 1.0s:  Torque control (0.4 Nm)

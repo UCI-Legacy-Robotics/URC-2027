@@ -1,44 +1,25 @@
 #pragma once
 
 #include "embedded/core/CanFrame.hpp"
-#include "embedded/core/ServiceTx.hpp"
+#include "embedded/core/TxMessage.hpp"
+#include "embedded/messages/ImmediateMessage.hpp"
+#include "embedded/messages/PeriodicMessage.hpp"
+#include "embedded/messages/ServiceMessage.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <vector>
 
 class CanManager;
-class CanDevice;
 
 enum class DeviceState : uint8_t {
   NORMAL,
   SOFT_BLOCK,
   ERROR_HARD_BLOCK
-};
-
-struct TxTask {
-  enum class Type : uint8_t {
-    PERIODIC,
-    SERVICE_RETRY
-  };
-
-  Type type{Type::PERIODIC};
-  uint8_t task_id{0};
-  std::chrono::microseconds period{0};
-  std::chrono::steady_clock::time_point deadline{};
-  std::weak_ptr<CanDevice> device{};
-  std::atomic<bool> active{true};
-
-  // Used only when type == SERVICE_RETRY
-  CanFrame frame{};
-  uint8_t retries_left{0};
-  std::function<void()> on_retry_tick{};
 };
 
 class CanDevice : public std::enable_shared_from_this<CanDevice> {
@@ -56,28 +37,37 @@ public:
   DeviceState state() const noexcept { return state_.load(std::memory_order_acquire); }
   bool is_healthy() const noexcept { return state() != DeviceState::ERROR_HARD_BLOCK; }
 
+  bool send_immediate(const CanFrame& frame);
+  bool send_delayed(const CanFrame& frame, std::chrono::microseconds delay);
+  bool schedule_message(std::shared_ptr<TxMessage> msg);
+
 protected:
-  // --- Teammate Overrides ---
+  // --- Device Subclass Overrides ---
   virtual void on_rx(const CanFrame& frame) = 0;
-  virtual std::optional<CanFrame> on_periodic_tx(uint8_t task_id) { (void)task_id; return std::nullopt; }
-  virtual std::optional<CanFrame> on_safe_tx(uint8_t task_id) { (void)task_id; return std::nullopt; }
   virtual void on_soft_block() {}
   virtual void on_hard_block() {}
 
-  // --- Teammate Helpers ---
-  void add_periodic(uint8_t task_id, std::chrono::microseconds period);
-  bool send_immediate(const CanFrame& frame);
+  // --- Device Subclass Factories for Member Initialization ---
+  // Creates a two-lambda PeriodicMessage (normal + soft-block degraded) queued upon registration
+  std::shared_ptr<PeriodicMessage> create_periodic(
+      std::chrono::microseconds period,
+      PeriodicMessage::FrameBuilder normal_builder,
+      PeriodicMessage::FrameBuilder safe_builder = nullptr);
+
+  std::shared_ptr<ServiceChannel> create_service(ServiceChannel::AckMatcher matcher);
+
   void mark_control_updated() noexcept;
 
 private:
   friend class CanManager;
-  friend class ServiceTx;
+  friend class ServiceChannel;
 
-  struct PeriodicSpec {
-    uint8_t task_id;
+  struct PendingPeriodicSpec {
+    std::shared_ptr<PeriodicMessage> msg;
     std::chrono::microseconds period;
   };
 
+  std::vector<std::shared_ptr<TxMessage>> bind_and_collect_periodic_messages();
   void handle_rx(const CanFrame& frame);
   void check_watchdog(int64_t now_ns);
   static int64_t now_ns() noexcept;
@@ -93,9 +83,9 @@ private:
   std::atomic<uint8_t> recovery_count_{0};
 
   std::weak_ptr<CanManager> manager_;
-  std::vector<PeriodicSpec> periodic_specs_;
-  std::vector<std::shared_ptr<TxTask>> owned_tasks_;
+  std::vector<PendingPeriodicSpec> periodic_specs_;
+  std::vector<std::shared_ptr<PeriodicMessage>> periodic_messages_;
 
   std::mutex services_mutex_;
-  std::vector<ServiceTx*> services_;
+  std::vector<ServiceChannel*> services_;
 };

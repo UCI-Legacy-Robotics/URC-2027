@@ -2,10 +2,10 @@
 
 #include "embedded/core/CanDevice.hpp"
 #include "embedded/core/CanFrame.hpp"
+#include "embedded/core/TxMessage.hpp"
 
 #include <atomic>
 #include <condition_variable>
-#include <deque>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -19,7 +19,11 @@
 class CanManager : public std::enable_shared_from_this<CanManager> {
 public:
   static std::shared_ptr<CanManager> get_instance(const std::string& interface_name = "can0");
+
   ~CanManager();
+
+  CanManager(const CanManager&) = delete;
+  CanManager& operator=(const CanManager&) = delete;
 
   bool start();
   void stop();
@@ -35,6 +39,7 @@ public:
       }
       return typed;
     }
+
     auto dev = std::make_shared<T>(name, std::forward<Args>(args)...);
     if (!register_device(dev)) {
       if (auto concurrent = std::dynamic_pointer_cast<T>(get_device(name))) {
@@ -45,51 +50,50 @@ public:
     return dev;
   }
 
-  bool register_device(const std::shared_ptr<CanDevice>& device);
-  bool unregister_device(const std::string& name);
+  bool register_device(std::shared_ptr<CanDevice> device);
+  bool deregister_device(const std::string& name);
   std::shared_ptr<CanDevice> get_device(const std::string& name) const;
   std::vector<std::shared_ptr<CanDevice>> get_all_devices() const;
 
-  bool send_immediate(const CanFrame& frame);
-  void schedule_task(std::shared_ptr<TxTask> task);
+  // Polymorphic scheduler entry point for any TxMessage subclass
+  void schedule(std::shared_ptr<TxMessage> msg);
 
 private:
   explicit CanManager(std::string interface_name);
 
   struct RxRoute {
     CanFilter filter;
-    std::weak_ptr<CanDevice> device;
+    std::shared_ptr<CanDevice> device;
   };
 
-  struct EarliestDeadline {
-    bool operator()(const std::shared_ptr<TxTask>& a, const std::shared_ptr<TxTask>& b) const {
-      return a->deadline > b->deadline;
-    }
-  };
+  bool open_socket();
+  void close_socket();
+  void rebuild_rx_routes_and_filters();
+  bool write_raw_frame(const CanFrame& frame) noexcept;
 
-  void rx_loop();
   void tx_loop();
+  void rx_loop();
   void watchdog_loop();
-
-  void sync_filters_locked();
-  bool write_socket_frame(const CanFrame& frame) noexcept;
 
   const std::string interface_name_;
   int sock_fd_{-1};
   std::atomic<bool> running_{false};
-  std::atomic<uint32_t> stagger_idx_{0};
+  std::atomic<uint64_t> next_seq_id_{1};
 
-  std::thread rx_thread_;
   std::thread tx_thread_;
+  std::thread rx_thread_;
   std::thread watchdog_thread_;
 
   mutable std::mutex registry_mutex_;
   std::unordered_map<std::string, std::shared_ptr<CanDevice>> devices_;
+
   std::shared_ptr<const std::vector<RxRoute>> rx_routes_;
 
   std::mutex tx_mutex_;
   std::condition_variable tx_cv_;
-  std::deque<CanFrame> immediate_queue_;
-  std::priority_queue<std::shared_ptr<TxTask>, std::vector<std::shared_ptr<TxTask>>, EarliestDeadline>
-      periodic_queue_;
+  std::priority_queue<
+      std::shared_ptr<TxMessage>,
+      std::vector<std::shared_ptr<TxMessage>>,
+      TxMessageComparator>
+      tx_queue_;
 };
