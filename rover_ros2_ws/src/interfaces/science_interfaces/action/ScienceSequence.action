@@ -1,0 +1,14 @@
+# home, lower_platform, collect_bradford, retract_bradford,
+# blend_and_measure, next_cuvette, measure_npk, retract_npk, ready_to_drive
+string command
+---
+bool success
+bool cancelled
+string message
+ScienceState state
+# Parallel arrays. Results are raw instrument readings, not inferred life detection.
+string[] measurement_names
+float64[] measurement_values
+string[] measurement_units
+---
+ScienceState state

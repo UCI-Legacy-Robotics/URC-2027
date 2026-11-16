@@ -1,0 +1,14 @@
+# Contract for a FUTURE embedded science driver; see docs/science_sequence.md.
+# Targets are ABSOLUTE steps from a homed origin, not relative deltas.
+string command
+float64 value
+---
+# Success means physically completed/confirmed, not merely received.
+bool success
+string message
+float64 actual_value
+float64[] readings
+string[] units
+---
+float64 progress
+string detail
