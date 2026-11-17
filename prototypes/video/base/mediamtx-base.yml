@@ -1,0 +1,65 @@
+# Base station MediaMTX (runs on the base station laptop).
+#
+# ROVER_HOST is a placeholder: start-base.sh replaces it with the rover's IP
+# and writes the result to logs/mediamtx-base.generated.yml. Don't run this
+# file directly.
+#
+# Each path pulls the same rover stream (rover/front) over a different
+# transport, so the transports can be compared over the real 5 GHz link.
+# All of them pull only while a browser is watching (sourceOnDemand).
+#
+# Ports are offset by 10000 from the rover's so both instances can also run
+# on one machine (start-loopback.sh).
+
+logLevel: info
+logDestinations: [stdout]
+
+readTimeout: 5s
+writeTimeout: 5s
+
+api: yes
+apiAddress: 127.0.0.1:19997
+
+# Browsers on the base network open http://<base>:18889/rover/front
+webrtc: yes
+webrtcAddress: :18889
+webrtcLocalUDPAddress: :18189
+
+# Lets tools like ffplay or VLC read from the base for debugging.
+rtsp: yes
+rtspTransports: [tcp]
+rtspAddress: :18554
+
+srt: no
+rtmp: no
+hls: no
+moq: no
+playback: no
+metrics: no
+pprof: no
+
+pathDefaults:
+  sourceOnDemand: yes
+  # How long to wait for the rover before giving up on a new viewer.
+  sourceOnDemandStartTimeout: 10s
+  # How long to keep pulling after the last viewer leaves.
+  sourceOnDemandCloseAfter: 10s
+
+paths:
+  # RTSP over TCP: no corrupted frames, but packet loss shows up as stalls
+  # and growing latency while TCP retransmits. Start here: it works through
+  # any network setup.
+  rover/front:
+    source: rtsp://ROVER_HOST:8554/rover/front
+    rtspTransport: tcp
+
+  # RTSP over UDP: lowest latency, but lost packets show up as smeared or
+  # gray frames until the next keyframe.
+  rover/front-udp:
+    source: rtsp://ROVER_HOST:8554/rover/front
+    rtspTransport: udp
+
+  # SRT: UDP with retransmission inside a fixed latency window (the rover's
+  # srtMinLatency). The candidate for a lossy radio link.
+  rover/front-srt:
+    source: srt://ROVER_HOST:8890?streamid=read:rover/front

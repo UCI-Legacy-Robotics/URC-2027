@@ -1,0 +1,51 @@
+# Rover MediaMTX (runs on the Jetson).
+#
+# The publisher (publish-zed.sh) pushes H.264 here over RTSP on localhost.
+# The base station MediaMTX pulls from here over the 5 GHz link, either over
+# RTSP (TCP or UDP) or SRT, only while someone at the base is watching.
+#
+# Ports the base station must be able to reach on the rover:
+#   8554/tcp        RTSP (control, and media when the base uses TCP)
+#   8000-8001/udp   RTSP media when the base uses UDP
+#   8890/udp        SRT
+#   8889/tcp + 8189/udp  WebRTC page, only for the "browser direct from rover" comparison
+
+logLevel: info
+logDestinations: [stdout]
+
+# Stop waiting on a dead radio link sooner than the 10 s default.
+readTimeout: 5s
+writeTimeout: 5s
+
+api: yes
+apiAddress: 127.0.0.1:9997
+
+rtsp: yes
+rtspTransports: [udp, tcp]
+rtspAddress: :8554
+rtpAddress: :8000
+rtcpAddress: :8001
+
+srt: yes
+srtAddress: :8890
+# SRT adds this much buffering so it can retransmit lost packets. Rule of
+# thumb: about 4x the radio's round-trip time. 120 ms is MediaMTX's default;
+# tune this on the real link and record the value used in the README.
+srtMinLatency: 120ms
+
+# Lets a browser on the base network open http://<rover>:8889/rover/front
+# directly, to compare against the realistic path through the base MediaMTX.
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+
+rtmp: no
+hls: no
+moq: no
+playback: no
+metrics: no
+pprof: no
+
+paths:
+  rover/front:
+    source: publisher
