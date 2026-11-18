@@ -15,7 +15,7 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
-find_package(image_transport REQUIRED)
+find_package(pano_interfaces REQUIRED)
 
 # ── OpenCV ────────────────────────────────────────────────────────────────────
 find_package(OpenCV REQUIRED
@@ -28,8 +28,10 @@ find_package(OpenCV REQUIRED
     features2d
     calib3d
     flann
-    xfeatures2d   # SIFT lives here in opencv_contrib
+    xfeatures2d  
 )
+# ── Custom services ───────────────────────────────────────────────────────────
+
 
 # ── Node executable ───────────────────────────────────────────────────────────
 add_executable(pano_stitch_node
@@ -49,7 +51,7 @@ ament_target_dependencies(pano_stitch_node
   std_srvs
   sensor_msgs
   cv_bridge
-  image_transport
+  pano_interfaces
 )
 
 target_link_libraries(pano_stitch_node

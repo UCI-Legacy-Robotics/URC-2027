@@ -1,16 +1,18 @@
-#include <deque>
 #include <memory>
-#include <mutex>
 #include <string>
+#include <filesystem>
 
 #include "cv_bridge/cv_bridge.h"
-#include "image_transport/image_transport.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "std_msgs/msg/header.hpp"
-#include "std_srvs/srv/trigger.hpp"
+#include "pano_interfaces/srv/stitch_folder.hpp"
+#include <opencv2/imgcodecs.hpp>
+
 
 #include "stitcher.hpp"
+
+namespace fs = std::filesystem;
 
 // Buffers incoming frames from a ZED2 image topic.
 // Call ~/stitch to stitch whatever is in the buffer into a panorama.
@@ -18,107 +20,82 @@
 class PanoStitchNode : public rclcpp::Node {
 public:
   PanoStitchNode() : Node("pano_stitch_node") {
-    image_topic_    = declare_parameter<std::string>("image_topic",
-                          "/zed2/zed_node/left/image_rect_color");
-    max_buffer_size_ = declare_parameter<int>("max_buffer_size", 8);
 
-    image_sub_ = image_transport::create_subscription(
-        this, image_topic_,
-        [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-          imageCallback(msg);
-        }, "raw");
+    pano_pub_ = create_publisher<sensor_msgs::msg::Image>("~/panorama", 10);
 
-    pano_pub_ = image_transport::create_publisher(this, "~/panorama");
-
-    stitch_service_ = create_service<std_srvs::srv::Trigger>(
+    stitch_service_ = create_service<pano_interfaces::srv::StitchFolder>(
         "~/stitch",
-        [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
-               std::shared_ptr<std_srvs::srv::Trigger::Response> res) {
+        [this](const std::shared_ptr<pano_interfaces::srv::StitchFolder::Request> req,
+               std::shared_ptr<pano_interfaces::srv::StitchFolder::Response> res) {
           handleStitch(req, res);
         });
 
-    clear_service_ = create_service<std_srvs::srv::Trigger>(
-        "~/clear_buffer",
-        [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
-               std::shared_ptr<std_srvs::srv::Trigger::Response> res) {
-          handleClear(req, res);
-        });
-
     RCLCPP_INFO(get_logger(),
-        "pano_stitch_node ready — topic: '%s', buffer: %d frames.",
-        image_topic_.c_str(), max_buffer_size_);
+        "pano_stitch_node ready. Call '~/stitch' with a folder_path to run.");
+    
   }
 
 private:
-  void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-    cv_bridge::CvImageConstPtr cv_ptr;
-    try {
-      cv_ptr = cv_bridge::toCvShare(msg, "bgr8");
-    } catch (const cv_bridge::Exception& e) {
-      RCLCPP_WARN(get_logger(), "cv_bridge: %s", e.what());
-      return;
-    }
-    std::lock_guard<std::mutex> lock(buffer_mutex_);
-    buffer_.push_back(cv_ptr->image.clone());
-    if (static_cast<int>(buffer_.size()) > max_buffer_size_)
-      buffer_.pop_front();
-  }
-
   void handleStitch(
-      const std::shared_ptr<std_srvs::srv::Trigger::Request>,
-      std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
-    std::vector<cv::Mat> frames;
-    {
-      std::lock_guard<std::mutex> lock(buffer_mutex_);
-      frames.assign(buffer_.begin(), buffer_.end());
+    const std::shared_ptr<pano_interfaces::srv::StitchFolder::Request> request,
+    std::shared_ptr<pano_interfaces::srv::StitchFolder::Response> response) {
+    
+    const std::string image_dir = request->folder_path;
+
+    if(image_dir.empty()) {
+      response->success = false;
+      response->message = "No image_dir specified.";
+      return;
+    }
+    std::vector<fs::path> paths;
+    for (const auto& entry : fs::directory_iterator(image_dir)) {
+      if (entry.is_regular_file()) {
+        paths.push_back(entry.path());
+      }
     }
 
-    if (frames.size() < 2) {
+    std::sort(paths.begin(), paths.end());
+
+    if (paths.size() < 2) {
       response->success = false;
-      response->message = "Need at least 2 frames (have " +
-                          std::to_string(frames.size()) + ").";
+      response->message = "Need at least 2 images in '" + image_dir +
+                          "' (found " + std::to_string(paths.size()) + ").";
       return;
     }
 
-    cv::Mat panorama = stitcher_.stitch(frames);
+    std::vector<cv::Mat> images;
+
+    for (const auto& path : paths) {
+      cv::Mat img = cv::imread(path.string());
+      if (!img.empty()) {
+        images.push_back(img);
+      }
+    }
+    
+
+    cv::Mat panorama = stitcher_.stitch(images);
 
     if (panorama.empty()) {
       response->success = false;
-      response->message = "Stitching failed — try panning more slowly for better overlap.";
+      response->message = "Stitching failed — tcheck image overlap.";
       return;
     }
 
     std_msgs::msg::Header header;
     header.stamp    = now();
     header.frame_id = "panorama";
-    pano_pub_.publish(cv_bridge::CvImage(header, "bgr8", panorama).toImageMsg());
+    pano_pub_->publish(*cv_bridge::CvImage(header, "bgr8", panorama).toImageMsg());
 
     response->success = true;
     response->message = "Published " + std::to_string(panorama.cols) + "x" +
                         std::to_string(panorama.rows) + " panorama from " +
-                        std::to_string(frames.size()) + " frames.";
+                        std::to_string(images.size()) + " images.";
   }
 
-  void handleClear(
-      const std::shared_ptr<std_srvs::srv::Trigger::Request>,
-      std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
-    std::lock_guard<std::mutex> lock(buffer_mutex_);
-    buffer_.clear();
-    response->success = true;
-    response->message = "Buffer cleared.";
-  }
-
-  std::string image_topic_;
-  int         max_buffer_size_;
-
-  std::deque<cv::Mat>  buffer_;
-  std::mutex           buffer_mutex_;
   pano_stitch::PanoStitcher stitcher_;
 
-  image_transport::Subscriber image_sub_;
-  image_transport::Publisher  pano_pub_;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr stitch_service_;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr clear_service_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pano_pub_;
+  rclcpp::Service<pano_interfaces::srv::StitchFolder>::SharedPtr stitch_service_;
 };
 
 int main(int argc, char** argv) {

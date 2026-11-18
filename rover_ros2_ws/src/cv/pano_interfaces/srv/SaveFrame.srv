@@ -1,0 +1,5 @@
+float32 angle
+---
+bool success
+string filepath
+string message
