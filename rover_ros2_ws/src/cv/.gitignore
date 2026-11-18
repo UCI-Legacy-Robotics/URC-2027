@@ -21,3 +21,9 @@ checkpoints/
 # Temporary files
 *.log
 .DS_Store
+
+
+#ROS build artifacts
+build/
+install/
+log/

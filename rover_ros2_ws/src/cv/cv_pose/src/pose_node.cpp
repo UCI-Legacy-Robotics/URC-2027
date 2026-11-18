@@ -98,6 +98,7 @@ private:
         kp_msg.detected = false;
         kp_msg.person_confidence = 0.0f;
 
+        float best_area = 0.0f;
         for (int i = 0; i < num_detections; i++) {
             const float *det = data + i * DETECTION_SIZE;
             const float confidence = det[4];
@@ -119,8 +120,10 @@ private:
             cv::putText(frame, cv::format("Person %.2f", confidence), p1,
                         cv::FONT_HERSHEY_SIMPLEX, 0.6, BOX_COLOR, 2);
 
-            //select highest-confidence person for downstream recognition
-            if (confidence > kp_msg.person_confidence) {
+            //select largest person
+            const float area = (p2.x - p1.x) * (p2.y - p1.y);
+            if (area > best_area) {
+                best_area = area;
                 kp_msg.detected = true;
                 kp_msg.person_confidence = confidence;
                 for (int k = 0; k < NUM_KEYPOINTS; k++) {
