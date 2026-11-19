@@ -33,6 +33,25 @@ Semantic colors, used sparingly:
 
 Design tokens are named values (colors, spacing, font sizes, borders) that every widget uses instead of raw values. They're defined once in the Tailwind theme, so the whole app can be restyled in one place. Widgets never hard-code hex values or pixel sizes.
 
+The theme is the `@theme` block in `gui/frontend/src/renderer/src/assets/main.css`. Tailwind's default color palette is removed, so only these colors exist: `bg-panel` works, `bg-zinc-900` doesn't. The values are placeholders until task A2.
+
+| Token | Tailwind classes | Use |
+| ----- | ---------------- | --- |
+| `bg` | `bg-bg` | App background |
+| `panel` | `bg-panel` | Panels, top bar |
+| `panel-raised` | `bg-panel-raised` | Hover, selected rows |
+| `border` | `border-border` | 1px borders |
+| `fg` | `text-fg` | Body text |
+| `fg-muted` | `text-fg-muted` | Labels, secondary text |
+| `fg-strong` | `text-fg-strong` | Values, emphasis |
+| `ok` | `text-ok`, `bg-ok` | Green: OK, online, executing |
+| `primary` | `text-primary`, `bg-primary` | Amber: primary action, selected item |
+| `caution` | `text-caution`, `bg-caution` | Amber: caution |
+| `fault` | `text-fault`, `bg-fault` | Red: stop, cancel, fault |
+| `rover` | `text-rover`, `bg-rover` | Cyan: our rover and our assets |
+
+Fonts are system stacks (`font-sans`, `font-mono`), because the field has no internet for web fonts. Spacing uses Tailwind's default scale (`p-2`, `gap-3`), and text sizes use Tailwind's scale plus `text-2xs` (11px) for pills and dense labels.
+
 ## Base components
 
 Widgets are built from these, which live in `gui/frontend/src/renderer/src/design/` (shadcn/Radix, restyled):

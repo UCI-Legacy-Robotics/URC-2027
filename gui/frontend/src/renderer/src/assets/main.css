@@ -1,102 +1,62 @@
-/* Temporary styles until Tailwind and the design tokens land. */
-:root {
-  color-scheme: dark;
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Every color, font and text size in the UI comes from here, so the whole
+ * app can be restyled in one place. Placeholder values: task A2 sets the real ones.
+ * See docs/gui/design.md.
+ */
+@theme {
+  /* Drop Tailwind's default palette: only our tokens exist (bg-panel, not bg-zinc-900). */
+  --color-*: initial;
+
+  /* Surfaces */
+  --color-bg: #0d0d0d; /* app background */
+  --color-panel: #171717; /* panels, top bar */
+  --color-panel-raised: #1f1f1f; /* hover, selected rows */
+  --color-border: #2b2b2b; /* 1px borders */
+
+  /* Text */
+  --color-fg: #d4d4d4; /* body text */
+  --color-fg-muted: #a3a3a3; /* labels, secondary text */
+  --color-fg-strong: #f5f5f5; /* values, emphasis */
+
+  /* Semantic accents: use sparingly */
+  --color-ok: #3fb950; /* green: OK, online, executing */
+  --color-primary: #f2a93b; /* amber: primary action, selected item */
+  --color-caution: #f2a93b; /* amber: caution */
+  --color-fault: #e5484d; /* red: stop, cancel, fault */
+  --color-rover: #4cc3d9; /* cyan: our rover and our assets */
+
+  /* Fonts: system stacks only, no web fonts (the field has no internet) */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Ubuntu, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Ubuntu Mono', Menlo, Consolas, monospace;
+
+  /* Extra-small text for pills and dense labels */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  background: #0d0d0d;
-  color: #d4d4d4;
-  font-family: system-ui, sans-serif;
-}
-
-/* In Electron this is also the window's title bar: drag it to move the window. */
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 36px;
-  padding-left: 12px;
-  border-bottom: 1px solid #2b2b2b;
-  background: #171717;
+/* Electron window dragging: the top bar is the title bar. */
+@utility drag-region {
   -webkit-app-region: drag;
-  user-select: none;
 }
 
-/* Room for the native macOS window buttons. */
-.top-bar--mac {
-  padding-left: 80px;
-}
-
-.top-bar__title {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-}
-
-.top-bar__right {
-  display: flex;
-  align-items: center;
-  align-self: stretch;
-  gap: 12px;
-  padding-right: 12px;
-}
-
-.mode-pill {
-  padding: 2px 8px;
-  border: 1px solid currentColor;
-  font-family: ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-}
-
-.mode-pill--control {
-  color: #f2a93b;
-}
-
-.mode-pill--viewer {
-  color: #4cc3d9;
-}
-
-/* Frameless window buttons (Linux and Windows). */
-.window-controls {
-  display: flex;
-  align-self: stretch;
-  margin-right: -12px;
+@utility no-drag-region {
   -webkit-app-region: no-drag;
 }
 
-.window-controls button {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #a3a3a3;
-  cursor: default;
-}
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
 
-.window-controls button:hover {
-  background: #2b2b2b;
-  color: #e5e5e5;
-}
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
 
-.window-controls .window-controls__close:hover {
-  background: #c42b1c;
-  color: #ffffff;
-}
-
-.window-controls svg {
-  width: 10px;
-  height: 10px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1;
+  body {
+    @apply bg-bg font-sans text-fg;
+  }
 }
