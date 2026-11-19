@@ -11,25 +11,41 @@ body,
 }
 
 body {
-  background: #0b0d10;
-  color: #d6dbe1;
+  background: #0d0d0d;
+  color: #d4d4d4;
   font-family: system-ui, sans-serif;
 }
 
+/* In Electron this is also the window's title bar: drag it to move the window. */
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 36px;
-  padding: 0 12px;
-  border-bottom: 1px solid #2a2f36;
-  background: #14171c;
+  padding-left: 12px;
+  border-bottom: 1px solid #2b2b2b;
+  background: #171717;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+/* Room for the native macOS window buttons. */
+.top-bar--mac {
+  padding-left: 80px;
 }
 
 .top-bar__title {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
+}
+
+.top-bar__right {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 12px;
+  padding-right: 12px;
 }
 
 .mode-pill {
@@ -46,4 +62,41 @@ body {
 
 .mode-pill--viewer {
   color: #4cc3d9;
+}
+
+/* Frameless window buttons (Linux and Windows). */
+.window-controls {
+  display: flex;
+  align-self: stretch;
+  margin-right: -12px;
+  -webkit-app-region: no-drag;
+}
+
+.window-controls button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a3a3a3;
+  cursor: default;
+}
+
+.window-controls button:hover {
+  background: #2b2b2b;
+  color: #e5e5e5;
+}
+
+.window-controls .window-controls__close:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+
+.window-controls svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
 }

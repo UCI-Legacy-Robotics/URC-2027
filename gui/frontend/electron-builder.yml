@@ -1,5 +1,5 @@
 appId: edu.uci.legacyrobotics.basestation
-productName: Legacy Base Station
+productName: Legacy Robotics
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: legacy-base-station
+  executableName: legacy-robotics
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

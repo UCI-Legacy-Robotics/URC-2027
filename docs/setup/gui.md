@@ -33,6 +33,8 @@ From `gui/frontend`:
 
 You don't need the rover or the backend to work on widgets. See [Writing a widget](../gui/widgets.md).
 
+The Electron window has no OS title bar: the app's top bar is the title bar. Drag it to move the window; the minimize, maximize and close buttons are at its right end (macOS keeps its own buttons on the left).
+
 ### Frontend checks
 
 Git hooks run these for you: ESLint and Prettier on staged files at commit, and the full typecheck and lint at push. CI runs them all again on pull requests, because hooks can be skipped.
