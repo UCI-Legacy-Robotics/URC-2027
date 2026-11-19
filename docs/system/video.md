@@ -1,3 +1,13 @@
+# Video
+
+Rover cameras reach the GUI over the 5 GHz link; the 900 MHz link only carries the controls.
+
+- All cameras run in one camera process on the rover, so frames reach the stream manager without serialization. It encodes H.264.
+- The rover's MediaMTX only sends a stream over 5 GHz while someone is watching it (on-demand pull).
+- The base MediaMTX serves the streams over WebRTC to the Electron app and to browser viewers. Video doesn't go through `gui/backend`.
+- Bitrate and resolution are commands, so only the Electron app can change them. They travel over 900 MHz as MAVLink commands (see [MAVLink dialect](mavlink.md)).
+
+```mermaid
 flowchart LR
     subgraph ROVER["Rover (ROS 2)"]
         subgraph CAMPROC["Camera process (component_container_mt, intra-process)"]
@@ -40,3 +50,4 @@ flowchart LR
     BACK <--> R900
     R900 <--> TELEM
     TELEM -->|"bitrate / resolution"| SM
+```

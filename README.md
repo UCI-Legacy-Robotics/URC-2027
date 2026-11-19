@@ -22,48 +22,19 @@ gui/                      # base station GUI (no ROS)
 ├── backend/              # MAVLink <-> WebSocket server: owns the radio, logs telemetry
 └── frontend/             # Electron + React + TypeScript app (control) / browser viewer
 mavlink/                  # MAVLink dialect XML shared by the rover and gui/backend
-docs/                     # subsystem docs
+docs/                     # all docs, start at docs/README.md
 ```
 
-The rover runs ROS 2. The base station does not: `gui/backend` decodes MAVLink from the radio and streams it over WebSockets to the frontend, which runs as an Electron app (the only control client) on the base laptop and as a read-only viewer in browsers on the base Wi-Fi. Both sides generate their MAVLink code from the dialect in `mavlink/`, so message changes go there first.
+The rover runs ROS 2. The base station doesn't: `gui/backend` decodes MAVLink from the radio and streams it to the GUI, which runs as an Electron app (the only control client) on the base laptop and as a read-only viewer in browsers on the base Wi-Fi.
 
-Each folder under `src/` groups related ROS 2 packages. colcon finds packages recursively, so put packages directly inside the matching folder, e.g. `src/drive/drive_teleop/package.xml`. Shared messages, services, and actions go in `src/interfaces/`.
+## Docs
 
-## Setup
+All docs are in [`docs/`](docs/README.md). Start with:
 
-ROS 2 Jazzy requires **Ubuntu 24.04**. On Windows, install a 24.04 WSL distro:
-
-```powershell
-wsl --install -d Ubuntu-24.04
-```
-
-Inside Ubuntu 24.04, install ROS 2 Jazzy by following the [official guide](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) (`ros-jazzy-desktop` plus `ros-dev-tools`), then:
-
-```bash
-sudo rosdep init   # first time only
-rosdep update
-echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
-```
-
-## Build
-
-```bash
-cd rover_ros2_ws
-rosdep install --from-paths src --ignore-src -y
-colcon build --symlink-install
-source install/setup.bash
-```
-
-If a build works for you but not for others, check that every dependency is listed in the package's `package.xml`.
-
-## Base station GUI
-
-The base station GUI lives in `gui/` and doesn't need ROS, so GUI work runs natively on macOS, Windows or Linux (WSL is only needed for the ROS workspace). See [docs/gui/](docs/gui/architecture.md) for the architecture and how to write widgets, [gui/README.md](gui/README.md) for setup, and [mavlink/README.md](mavlink/README.md) for the shared MAVLink dialect.
+- [Rover setup](docs/setup/rover.md): Ubuntu/WSL, ROS 2 Jazzy, building the workspace
+- [GUI setup](docs/setup/gui.md): native on macOS, Windows or Linux
+- [System overview](docs/system/overview.md)
 
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
-
-## Docs
-
-Software docs are in [`docs/`](docs/).

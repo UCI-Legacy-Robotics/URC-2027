@@ -1,3 +1,14 @@
+# System overview
+
+How the rover and the base station fit together.
+
+- **The rover runs ROS 2** (Jazzy). `rover_telemetry` bridges ROS and MAVLink.
+- **The base station doesn't run ROS.** `gui/backend` decodes MAVLink from the radio and streams it to the GUI, which runs as an Electron app (the only control client) on the base laptop and as a read-only viewer in browsers on the base Wi-Fi. See [GUI architecture](../gui/architecture.md).
+- **Two radio links:**
+  - **900 MHz** carries MAVLink: all telemetry and every command. See [MAVLink dialect](mavlink.md).
+  - **5 GHz** carries video streams and media files (panoramas, science photos). See [Video](video.md).
+
+```mermaid
 flowchart LR
     subgraph ROVER["Rover (ROS 2)"]
         subgraph CAMPROC["Camera process (component_container_mt, intra-process)"]
@@ -95,3 +106,9 @@ flowchart LR
     BMTX -->|"WebRTC"| APP
     BACK -->|"viewer WebSocket, UI files,<br/>panoramas + photos (2.4 GHz Wi-Fi)"| VIEW
     BMTX -->|"WebRTC"| VIEW
+```
+
+Subsystem views:
+
+- [Video](video.md): cameras to the GUI over 5 GHz
+- [Science](science.md): science sequences and panoramas

@@ -85,4 +85,4 @@ Before opening a PR for a widget:
 - [ ] Each story looks right in both control and viewer mode
 - [ ] Controls are disabled in viewer mode
 - [ ] No hard-coded colors or sizes
-- [ ] Checks pass (see [gui/frontend/README.md](../../gui/frontend/README.md#checks))
+- [ ] Checks pass (see [GUI setup](../setup/gui.md#frontend-checks))

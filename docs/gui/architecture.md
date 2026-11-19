@@ -1,6 +1,6 @@
 # Base station GUI architecture
 
-How the base station GUI is put together: what runs where, who can control the rover, what happens when links drop, and how the frontend is split into widgets. For setup and commands, see [gui/frontend/README.md](../../gui/frontend/README.md) and [gui/README.md](../../gui/README.md).
+How the base station GUI is put together: what runs where, who can control the rover, what happens when links drop, and how the frontend is split into widgets. For setup and commands, see [GUI setup](../setup/gui.md). For the rest of the system, see the [system overview](../system/overview.md).
 
 ## Overview
 
@@ -44,7 +44,7 @@ flowchart LR
 - The access point is communications equipment: list it in the comms documentation due Apr 30, 2027 (rule 2.c.ii), and power it down with the radios when we're not competing (rule 2.c.i).
 - The field has no internet. The UI bundles everything it needs: no CDNs, web fonts or online map tiles.
 
-The subsystem diagrams in [diagrams/](../diagrams/) show the same split between the Electron app and viewers for video, science and panoramas.
+The [video](../system/video.md) and [science](../system/science.md) pages show the same split between the Electron app and viewers.
 
 ## Control model
 
@@ -139,7 +139,7 @@ Decided 2026-11-19. Don't add frontend libraries outside this list without check
 | ----- | ------ |
 | Language | Python 3.13 (planned; `pyproject.toml` currently allows 3.12+). There's no ROS on the base station, so it isn't tied to Ubuntu 24.04's 3.12. |
 | Framework | FastAPI (WebSockets, serves the built UI) |
-| MAVLink | pymavlink (MAVLink 2), code generated from [`mavlink/rover.xml`](../../mavlink/README.md) |
+| MAVLink | pymavlink (MAVLink 2), code generated from [`mavlink/rover.xml`](../system/mavlink.md) |
 | Environment / dependencies | uv |
 | Lint / format / types | Ruff + mypy |
 
