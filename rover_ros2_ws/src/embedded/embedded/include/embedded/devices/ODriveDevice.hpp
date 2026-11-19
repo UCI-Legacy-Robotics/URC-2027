@@ -15,6 +15,19 @@
 
 class ODriveDevice : public CanDevice {
 public:
+  static std::shared_ptr<ODriveDevice> register_device(
+      const std::string& name,
+      uint8_t node_id,
+      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(100),
+      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(50),
+      const std::string& manager_name = "can0");
+  static std::shared_ptr<ODriveDevice> find_device(
+      const std::string& name,
+      const std::string& manager_name = "can0");
+  static std::shared_ptr<ODriveDevice> find_device(
+      uint32_t id,
+      const std::string& manager_name = "can0");
+
   enum class ControlMode : uint8_t {
     POSITION,
     VELOCITY,
@@ -26,12 +39,6 @@ public:
   static constexpr uint32_t kAxisStateFullCalibration = 3;
   static constexpr uint32_t kAxisStateEncoderOffsetCalibration = 7;
   static constexpr uint32_t kAxisStateClosedLoop = 8;
-
-  ODriveDevice(
-      const std::string& name,
-      uint8_t node_id,
-      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(100),
-      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(50));
 
   // --- Continuous Setpoints (Sampled at 200 Hz by setpoint_periodic_) ---
   void set_pos(float pos_rev) noexcept;
@@ -62,6 +69,18 @@ protected:
   void on_rx(const CanFrame& frame) override;
 
 private:
+  static std::shared_ptr<ODriveDevice> find_device_impl(
+      const std::optional<std::string>& name,
+      const std::optional<uint32_t>& id,
+      const std::string& manager_name);
+
+  ODriveDevice(
+      const std::string& name,
+      uint8_t node_id,
+      std::chrono::milliseconds rx_timeout,
+      std::chrono::milliseconds control_timeout,
+      std::string manager_name);
+
   // ODrive CANSimple Command IDs
   static constexpr uint8_t kCmdHeartbeat = 0x001;
   static constexpr uint8_t kCmdSetAxisState = 0x007;

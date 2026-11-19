@@ -15,17 +15,22 @@
 
 class YellowJacketDevice : public CanDevice {
 public:
+  static std::shared_ptr<YellowJacketDevice> register_device(
+      const std::string& name,
+      uint8_t node_id,
+      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(200),
+      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(100),
+      const std::string& manager_name = "can0");
+  static std::shared_ptr<YellowJacketDevice> find_device(
+      std::optional<std::string> name = std::nullopt,
+      std::optional<uint32_t> id = std::nullopt,
+      const std::string& manager_name = "can0");
+
   enum class ControlMode : uint8_t {
     POSITION = 4,
     VELOCITY = 3,
     DUTY_CYCLE = 1
   };
-
-  YellowJacketDevice(
-      const std::string& name,
-      uint8_t node_id,
-      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(200),
-      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(100));
 
   // --- Continuous Setpoints (Sampled at 200 Hz by setpoint_periodic_) ---
   void set_pos(float pos_rev) noexcept;
@@ -40,6 +45,13 @@ protected:
   void on_rx(const CanFrame& frame) override;
 
 private:
+  YellowJacketDevice(
+      const std::string& name,
+      uint8_t node_id,
+      std::chrono::milliseconds rx_timeout,
+      std::chrono::milliseconds control_timeout,
+      std::string manager_name);
+
   // YellowJacket CANSimple Command IDs
   static constexpr uint8_t kCmdHeartbeat = 0x001;
   static constexpr uint8_t kCmdGetEncoderEstimates = 0x009;

@@ -1,4 +1,3 @@
-#include "embedded/core/CanManager.hpp"
 #include "embedded/devices/ODriveDevice.hpp"
 
 #include <chrono>
@@ -10,10 +9,18 @@ using namespace std::chrono_literals;
 int main(int argc, char** argv) {
   const std::string interface_name = (argc > 1) ? argv[1] : "vcan0";
 
-  auto can_mgr = CanManager::get_instance(interface_name);
-  can_mgr->get_or_register_device<ODriveDevice>("wheel_motor", /*node_id=*/1, /*rx_timeout=*/0ms, /*control_timeout=*/0ms);
+  auto odrive = ODriveDevice::register_device(
+      "wheel_motor", /*node_id=*/1, /*rx_timeout=*/0ms, /*control_timeout=*/0ms, interface_name);
+  odrive = ODriveDevice::find_device("wheel_motor", interface_name);
 
-  auto odrive = can_mgr->get_or_register_device<ODriveDevice>("wheel_motor", /*node_id=*/1, /*rx_timeout=*/0ms, /*control_timeout=*/0ms);
+  std::array<std::shared_ptr<ODriveDevice>, 20> odrives{};
+
+  for (int i = 2; i < 20; ++i) {
+    odrives[i] = ODriveDevice::register_device(
+      "wheel_motor_" + std::to_string(i), /*node_id=*/i, /*rx_timeout=*/0ms, /*control_timeout=*/0ms, interface_name);
+  }
+
+  std::this_thread::sleep_for(10000ms); // Wait for my caveman brain to process ts
 
   std::cout << "Registered '" << odrive->name() << "' on " << interface_name << "\n";
 
@@ -61,7 +68,6 @@ int main(int argc, char** argv) {
   odrive->set_axis(ODriveDevice::kAxisStateIdle);
   std::this_thread::sleep_for(50ms);
 
-  can_mgr->stop();
   std::cout << "Shutdown complete.\n";
   return 0;
 }

@@ -54,8 +54,7 @@ bool ServiceChannel::send(
     const CanFrame& req,
     std::chrono::milliseconds retry_interval,
     uint8_t max_retries) {
-  auto mgr = owner_.manager_.lock();
-  if (!mgr) {
+  if (!owner_.manager_) {
     return false;
   }
 
@@ -73,7 +72,7 @@ bool ServiceChannel::send(
     state_.store(ServiceState::WAITING, std::memory_order_release);
   }
 
-  mgr->schedule(std::move(msg));
+  owner_.manager_->schedule(std::move(msg));
   return true;
 }
 

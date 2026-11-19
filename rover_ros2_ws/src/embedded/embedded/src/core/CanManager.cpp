@@ -10,10 +10,12 @@
 
 #include <cerrno>
 #include <cstring>
+#include <initializer_list>
 
 namespace {
 constexpr std::size_t kInitialQueueCapacity = 256;
 constexpr int kMaxWriteRetries = 4;
+thread_local CanManager* current_manager_worker = nullptr;
 }
 
 std::shared_ptr<CanManager> CanManager::get_instance(const std::string& interface_name) {
@@ -76,40 +78,133 @@ void CanManager::close_socket() {
 }
 
 bool CanManager::start() {
+  std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
   if (running_.load(std::memory_order_acquire)) {
     return true;
   }
+
+  const auto reap_thread = [](std::thread& thread) {
+    if (!thread.joinable()) {
+      return true;
+    }
+    if (thread.get_id() == std::this_thread::get_id()) {
+      return false;
+    }
+    thread.join();
+    return true;
+  };
+  if (!reap_thread(tx_thread_) || !reap_thread(rx_thread_) ||
+      !reap_thread(watchdog_thread_)) {
+    return false;
+  }
+  close_socket();
+
+  {
+    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+    for (auto it = devices_.begin(); it != devices_.end();) {
+      if (it->second.device.expired()) {
+        it = devices_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    if (devices_.empty()) {
+      return false;
+    }
+  }
+
   if (!open_socket()) {
     return false;
   }
 
-  rebuild_rx_routes_and_filters();
+  {
+    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+    for (auto it = devices_.begin(); it != devices_.end();) {
+      if (it->second.device.expired()) {
+        it = devices_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    if (devices_.empty()) {
+      close_socket();
+      return false;
+    }
+    rebuild_rx_routes_and_filters();
+    running_.store(true, std::memory_order_release);
+  }
 
-  running_.store(true, std::memory_order_release);
-  rx_thread_ = std::thread(&CanManager::rx_loop, this);
-  tx_thread_ = std::thread(&CanManager::tx_loop, this);
-  watchdog_thread_ = std::thread(&CanManager::watchdog_loop, this);
+  // Keep the manager alive until its worker loops have stopped.
+  const auto self = shared_from_this();
+  active_threads_.store(0, std::memory_order_release);
+  const auto launch = [this, &self](std::thread& thread, auto loop) {
+    active_threads_.fetch_add(1, std::memory_order_acq_rel);
+    try {
+      thread = std::thread([self, loop] {
+        current_manager_worker = self.get();
+        (self.get()->*loop)();
+        self->thread_finished();
+        current_manager_worker = nullptr;
+      });
+    } catch (...) {
+      active_threads_.fetch_sub(1, std::memory_order_acq_rel);
+      throw;
+    }
+  };
+  try {
+    launch(rx_thread_, &CanManager::rx_loop);
+    launch(tx_thread_, &CanManager::tx_loop);
+    launch(watchdog_thread_, &CanManager::watchdog_loop);
+  } catch (...) {
+    running_.store(false, std::memory_order_release);
+    tx_cv_.notify_all();
+    for (auto* thread : {&rx_thread_, &tx_thread_, &watchdog_thread_}) {
+      if (thread->joinable()) {
+        thread->join();
+      }
+    }
+    close_socket();
+    throw;
+  }
   return true;
 }
 
 void CanManager::stop() {
-  if (!running_.exchange(false, std::memory_order_acq_rel)) {
+  if (current_manager_worker == this) {
+    running_.store(false, std::memory_order_release);
+    tx_cv_.notify_all();
     return;
   }
 
+  std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
+  running_.store(false, std::memory_order_release);
   tx_cv_.notify_all();
 
-  if (tx_thread_.joinable()) {
-    tx_thread_.join();
-  }
-  if (rx_thread_.joinable()) {
-    rx_thread_.join();
-  }
-  if (watchdog_thread_.joinable()) {
-    watchdog_thread_.join();
-  }
+  const auto join_or_detach = [](std::thread& thread) {
+    if (!thread.joinable()) {
+      return;
+    }
+    if (thread.get_id() == std::this_thread::get_id()) {
+      thread.detach();
+    } else {
+      thread.join();
+    }
+  };
+  join_or_detach(tx_thread_);
+  join_or_detach(rx_thread_);
+  join_or_detach(watchdog_thread_);
 
-  close_socket();
+  {
+    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+    close_socket();
+  }
+}
+
+void CanManager::thread_finished() {
+  if (active_threads_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+    close_socket();
+  }
 }
 
 void CanManager::rebuild_rx_routes_and_filters() {
@@ -119,11 +214,16 @@ void CanManager::rebuild_rx_routes_and_filters() {
   next_routes->reserve(devices_.size());
   kernel_filters.reserve(devices_.size());
 
-  for (const auto& [name, dev] : devices_) {
-    next_routes->push_back(RxRoute{dev->filter(), dev});
+  for (const auto& [name, entry] : devices_) {
+    const auto device = entry.device.lock();
+    if (!device) {
+      continue;
+    }
+    const CanFilter filter = device->filter();
+    next_routes->push_back(RxRoute{filter, entry.device});
     struct can_filter kf {};
-    kf.can_id = dev->filter().id;
-    kf.can_mask = dev->filter().mask;
+    kf.can_id = filter.id;
+    kf.can_mask = filter.mask;
     kernel_filters.push_back(kf);
   }
 
@@ -144,80 +244,145 @@ void CanManager::rebuild_rx_routes_and_filters() {
 }
 
 bool CanManager::register_device(std::shared_ptr<CanDevice> device) {
-  if (!device) {
-    return false;
-  }
-
-  if (!running_.load(std::memory_order_acquire) && !start()) {
+  if (!device || device->manager_.get() != this) {
     return false;
   }
 
   {
     std::lock_guard<std::mutex> lock(registry_mutex_);
-    if (devices_.count(device->name()) > 0) {
+    auto named = devices_.find(device->name());
+    if (named != devices_.end() && !named->second.device.expired()) {
       return false;
     }
-    for (const auto& [existing_name, existing_dev] : devices_) {
-      if (device->filter().overlaps(existing_dev->filter())) {
+    if (named != devices_.end()) {
+      devices_.erase(named);
+    }
+
+    for (auto it = devices_.begin(); it != devices_.end();) {
+      const auto existing = it->second.device.lock();
+      if (!existing) {
+        it = devices_.erase(it);
+        continue;
+      }
+      if (device->id() == existing->id() ||
+          device->filter().overlaps(existing->filter())) {
         return false;
       }
+      ++it;
     }
-    device->manager_ = weak_from_this();
-    devices_[device->name()] = device;
+
+    device->registered_.store(true, std::memory_order_release);
+    devices_[device->name()] = DeviceEntry{device, device.get()};
     rebuild_rx_routes_and_filters();
   }
 
+  if (!running_.load(std::memory_order_acquire) && !start()) {
+    std::lock_guard<std::mutex> lock(registry_mutex_);
+    auto it = devices_.find(device->name());
+    if (it != devices_.end() && it->second.device.lock() == device) {
+      devices_.erase(it);
+    }
+    device->registered_.store(false, std::memory_order_release);
+    rebuild_rx_routes_and_filters();
+    return false;
+  }
+
   // Two-phase registration: bind weak_from_this() & schedule after derived ctor finishes
-  for (auto& msg : device->bind_and_collect_periodic_messages()) {
+  std::vector<std::shared_ptr<TxMessage>> periodic_messages;
+  {
+    std::lock_guard<std::mutex> lock(registry_mutex_);
+    auto it = devices_.find(device->name());
+    if (it == devices_.end() || it->second.identity != device.get() ||
+        !device->registered_.load(std::memory_order_acquire)) {
+      return false;
+    }
+    periodic_messages = device->bind_and_collect_periodic_messages();
+  }
+  for (auto& msg : periodic_messages) {
     schedule(std::move(msg));
   }
 
   return true;
 }
 
-bool CanManager::deregister_device(const std::string& name) {
+bool CanManager::deregister_device(
+    const std::string& name,
+    const CanDevice* expected_device) {
   std::shared_ptr<CanDevice> removed;
+  bool has_devices = false;
   {
     std::lock_guard<std::mutex> lock(registry_mutex_);
     auto it = devices_.find(name);
     if (it == devices_.end()) {
       return false;
     }
-    removed = std::move(it->second);
+    if (expected_device && it->second.identity != expected_device) {
+      return false;
+    }
+    removed = it->second.device.lock();
+    if (removed) {
+      removed->registered_.store(false, std::memory_order_release);
+    }
     devices_.erase(it);
     rebuild_rx_routes_and_filters();
-  }
 
-  for (auto& msg : removed->periodic_messages_) {
-    if (msg) {
-      msg->cancel();
+    for (const auto& [registered_name, entry] : devices_) {
+      if (!entry.device.expired()) {
+        has_devices = true;
+        break;
+      }
     }
   }
-  {
-    std::lock_guard<std::mutex> lock(removed->services_mutex_);
-    for (ServiceChannel* svc : removed->services_) {
-      if (svc) {
-        svc->cancel();
+
+  if (removed) {
+    for (auto& msg : removed->periodic_messages_) {
+      if (msg) {
+        msg->cancel();
+      }
+    }
+    {
+      std::lock_guard<std::mutex> lock(removed->services_mutex_);
+      for (ServiceChannel* svc : removed->services_) {
+        if (svc) {
+          svc->cancel();
+        }
       }
     }
   }
 
   tx_cv_.notify_one();
+  if (!has_devices) {
+    stop();
+  }
   return true;
 }
 
 std::shared_ptr<CanDevice> CanManager::get_device(const std::string& name) const {
   std::lock_guard<std::mutex> lock(registry_mutex_);
   auto it = devices_.find(name);
-  return (it != devices_.end()) ? it->second : nullptr;
+  return (it != devices_.end()) ? it->second.device.lock() : nullptr;
+}
+
+std::shared_ptr<CanDevice> CanManager::get_device(uint32_t id) const {
+  std::lock_guard<std::mutex> lock(registry_mutex_);
+  for (const auto& [name, entry] : devices_) {
+    if (auto device = entry.device.lock(); device && device->id() == id) {
+      return device;
+    }
+  }
+  return nullptr;
 }
 
 std::vector<std::shared_ptr<CanDevice>> CanManager::get_all_devices() const {
-  std::lock_guard<std::mutex> lock(registry_mutex_);
   std::vector<std::shared_ptr<CanDevice>> out;
-  out.reserve(devices_.size());
-  for (const auto& [name, dev] : devices_) {
-    out.push_back(dev);
+  {
+    std::lock_guard<std::mutex> lock(registry_mutex_);
+    out.reserve(devices_.size());
+    for (const auto& [name, entry] : devices_) {
+      if (auto device = entry.device.lock()) {
+        out.push_back(std::move(device));
+      }
+    }
   }
   return out;
 }
@@ -328,7 +493,9 @@ void CanManager::rx_loop() {
 
       for (const auto& route : *routes) {
         if (route.filter.matches(frame)) {
-          route.device->handle_rx(frame);
+          if (auto device = route.device.lock()) {
+            device->handle_rx(frame);
+          }
         }
       }
     }
@@ -345,10 +512,12 @@ void CanManager::watchdog_loop() {
   while (running_.load(std::memory_order_acquire)) {
     const int64_t now = CanDevice::now_ns();
     {
-      std::lock_guard<std::mutex> lock(registry_mutex_);
       snapshot.clear();
-      for (const auto& [name, dev] : devices_) {
-        snapshot.push_back(dev);
+      std::lock_guard<std::mutex> lock(registry_mutex_);
+      for (const auto& [name, entry] : devices_) {
+        if (auto device = entry.device.lock()) {
+          snapshot.push_back(std::move(device));
+        }
       }
     }
 

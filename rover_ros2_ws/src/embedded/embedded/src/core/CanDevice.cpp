@@ -9,18 +9,96 @@ CanDevice::CanDevice(
     std::string name,
     CanFilter filter,
     std::chrono::milliseconds rx_timeout,
-    std::chrono::milliseconds control_timeout)
+    std::chrono::milliseconds control_timeout,
+    std::string manager_name,
+    std::optional<uint32_t> id)
     : name_(std::move(name)),
+      manager_name_(std::move(manager_name)),
       filter_(filter),
+      id_(id.value_or(filter.id)),
       rx_timeout_ns_(std::chrono::duration_cast<std::chrono::nanoseconds>(rx_timeout).count()),
       control_timeout_ns_(
-          std::chrono::duration_cast<std::chrono::nanoseconds>(control_timeout).count()) {
+          std::chrono::duration_cast<std::chrono::nanoseconds>(control_timeout).count()),
+      manager_(CanManager::get_instance(manager_name_)) {
   const int64_t t = now_ns();
   last_rx_ns_.store(t, std::memory_order_relaxed);
   last_control_ns_.store(t, std::memory_order_relaxed);
 }
 
+void CanDevice::register_with_manager(const std::shared_ptr<CanDevice>& device) {
+  if (!device) {
+    throw std::invalid_argument("Cannot register a null CAN device");
+  }
+  if (device->name().empty()) {
+    throw std::invalid_argument("CAN device name cannot be empty");
+  }
+  if (device->manager_name().empty()) {
+    throw std::invalid_argument("CAN manager name cannot be empty");
+  }
+  if (!device->manager_->register_device(device)) {
+    throw_registration_error(device);
+  }
+}
+
+void CanDevice::throw_registration_error(const std::shared_ptr<CanDevice>& device) {
+  for (const auto& existing : device->manager_->get_all_devices()) {
+    if (existing->name() == device->name()) {
+      throw std::runtime_error(
+          "CAN device name '" + device->name() + "' is already registered");
+    }
+    if (existing->id() == device->id()) {
+      throw std::runtime_error(
+          "CAN device ID " + std::to_string(device->id()) + " is already registered");
+    }
+    if (device->filter().overlaps(existing->filter())) {
+      throw std::runtime_error(
+          "CAN filter for device '" + device->name() + "' overlaps device '" +
+          existing->name() + "'");
+    }
+  }
+  throw std::runtime_error("Failed to register CAN device '" + device->name() + "'");
+}
+
+std::shared_ptr<CanDevice> CanDevice::find_registered_device(
+    const std::optional<std::string>& name,
+    const std::optional<uint32_t>& id,
+    const std::string& manager_name) {
+  if ((!name || name->empty()) && !id) {
+    throw std::invalid_argument("Find a CAN device by name, ID, or both");
+  }
+  if (manager_name.empty()) {
+    throw std::invalid_argument("CAN manager name cannot be empty");
+  }
+
+  const auto manager = CanManager::get_instance(manager_name);
+  std::shared_ptr<CanDevice> by_name;
+  std::shared_ptr<CanDevice> by_id;
+
+  if (name && !name->empty()) {
+    by_name = manager->get_device(*name);
+    if (!by_name) {
+      throw std::runtime_error("No CAN device named '" + *name +
+                               "' is registered on '" + manager_name + "'");
+    }
+  }
+  if (id) {
+    by_id = manager->get_device(*id);
+    if (!by_id) {
+      throw std::runtime_error("No CAN device with ID " + std::to_string(*id) +
+                               " is registered on '" + manager_name + "'");
+    }
+  }
+  if (by_name && by_id && by_name != by_id) {
+    throw std::runtime_error("The requested CAN device name and ID identify different devices");
+  }
+  return by_name ? by_name : by_id;
+}
+
 CanDevice::~CanDevice() {
+  if (registered_.exchange(false, std::memory_order_acq_rel)) {
+    manager_->deregister_device(name_, this);
+  }
+
   for (auto& msg : periodic_messages_) {
     if (msg) {
       msg->cancel();
@@ -85,11 +163,10 @@ bool CanDevice::send_delayed(const CanFrame& frame, std::chrono::microseconds de
 }
 
 bool CanDevice::schedule_message(std::shared_ptr<TxMessage> msg) {
-  auto mgr = manager_.lock();
-  if (!mgr || !msg) {
+  if (!manager_ || !msg) {
     return false;
   }
-  mgr->schedule(std::move(msg));
+  manager_->schedule(std::move(msg));
   return true;
 }
 
