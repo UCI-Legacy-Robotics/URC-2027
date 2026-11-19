@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
       "wheel_motor", /*node_id=*/1, /*rx_timeout=*/0ms, /*control_timeout=*/0ms, interface_name);
   odrive = ODriveDevice::find_device("wheel_motor", interface_name);
 
-  std::array<std::shared_ptr<ODriveDevice>, 10> odrives{};
+  std::array<std::shared_ptr<ODriveDevice>, 20> odrives{};
   odrives[0] = odrive;
   for (std::size_t i = 1; i < odrives.size(); ++i) {
     const auto node_id = static_cast<uint8_t>(i + 1);
@@ -48,9 +48,9 @@ int main(int argc, char** argv) {
     }
   }
 
-  std::array<float, 10> positions{};
-  std::array<float, 10> velocities{};
-  std::array<float, 10> torques{};
+  std::array<float, 20> positions{};
+  std::array<float, 20> velocities{};
+  std::array<float, 20> torques{};
 
   // 4. Run a 100 Hz control & telemetry loop demonstrating vel, pos, and torque modes
   for (int step = 0; step < 10000; ++step) {
