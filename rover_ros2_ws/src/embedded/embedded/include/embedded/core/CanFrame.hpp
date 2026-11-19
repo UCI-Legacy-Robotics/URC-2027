@@ -35,12 +35,10 @@ struct CanFilter {
   uint32_t id{0};
   uint32_t mask{0};
 
-  // Matches all 32 CANSimple command IDs for a 6-bit node_id (0..63)
   static constexpr CanFilter can_simple(uint8_t node_id) noexcept {
     return {(static_cast<uint32_t>(node_id & 0x3FU) << 5), (0x3FU << 5) | kEffFlag | kRtrFlag};
   }
 
-  // Matches 29-bit CubeMars extended frames where low byte [7:0] == controller_id
   static constexpr CanFilter cubemars(uint8_t controller_id) noexcept {
     return {static_cast<uint32_t>(controller_id) | kEffFlag, 0xFFU | kEffFlag | kRtrFlag};
   }

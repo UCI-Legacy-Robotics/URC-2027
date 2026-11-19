@@ -1,22 +1,38 @@
 #include "embedded/devices/ODriveDevice.hpp"
 
 #include <cstring>
+#include <utility>
 
 ODriveDevice::ODriveDevice(
     const std::string& name,
     uint8_t node_id,
     std::chrono::milliseconds rx_timeout,
-    std::chrono::milliseconds control_timeout)
-    : CanDevice(name, CanFilter::can_simple(node_id), rx_timeout, control_timeout),
+    std::chrono::milliseconds control_timeout,
+    std::string manager_name)
+    : CanDeviceFactory<ODriveDevice>(
+          name,
+          CanFilter::can_simple(node_id),
+          rx_timeout,
+          control_timeout,
+          std::move(manager_name),
+          node_id),
       node_id_(node_id),
-      axis_service_(*this, [this](const CanFrame& f) {
+      setpoint_periodic_(create_periodic(
+          std::chrono::microseconds(20000), // 50 Hz
+          [this]() { return build_normal_setpoint_frame(); },
+          [this]() { return build_safe_setpoint_frame(); })),
+      axis_service_(create_service([this](const CanFrame& f) {
         // ODrive acknowledges Set_Axis_State when Heartbeat byte[4] matches requested state
         return f.can_simple_cmd_id() == kCmdHeartbeat && f.dlc >= 5 &&
-               f.data[4] == static_cast<uint8_t>(expected_axis_state_.load(std::memory_order_acquire));
-      }) {
-  // Stream active control setpoint at 200 Hz (every 5000 us)
-  add_periodic(0, std::chrono::microseconds(5000));
-}
+               f.data[4] ==
+                   static_cast<uint8_t>(expected_axis_state_.load(std::memory_order_acquire));
+      })),
+      set_origin_cmd_(create_immediate([this]() -> std::optional<CanFrame> {
+        return CanFrame::make_can_simple(node_id_, kCmdSetAbsolutePos, 4);
+      })),
+      clear_errors_cmd_(create_immediate([this]() -> std::optional<CanFrame> {
+        return CanFrame::make_can_simple(node_id_, kCmdClearErrors, 0);
+      })) {}
 
 void ODriveDevice::set_pos(float pos_rev) noexcept {
   target_pos_.store(pos_rev, std::memory_order_release);
@@ -42,14 +58,18 @@ bool ODriveDevice::set_axis(uint32_t requested_state) {
   CanFrame req = CanFrame::make_can_simple(node_id_, kCmdSetAxisState, 4);
   pack_u32(req.data.data(), requested_state);
 
-  // Send immediately and retry every 50 ms up to 5 times until Heartbeat confirms state
-  return axis_service_.send(req, std::chrono::milliseconds(50), 5);
+  // Dispatches immediately and retries every 1 s up to 5 times until Heartbeat confirms state
+  return axis_service_->send(req, std::chrono::milliseconds(1000), 5);
 }
 
 bool ODriveDevice::set_origin(float origin_pos_rev) {
   CanFrame frame = CanFrame::make_can_simple(node_id_, kCmdSetAbsolutePos, 4);
   pack_float(frame.data.data(), origin_pos_rev);
-  return send_immediate(frame);
+  return set_origin_cmd_.send(frame);
+}
+
+bool ODriveDevice::clear_errors() {
+  return clear_errors_cmd_.send();
 }
 
 void ODriveDevice::on_rx(const CanFrame& frame) {
@@ -80,7 +100,7 @@ void ODriveDevice::on_rx(const CanFrame& frame) {
   }
 }
 
-std::optional<CanFrame> ODriveDevice::on_periodic_tx(uint8_t) {
+std::optional<CanFrame> ODriveDevice::build_normal_setpoint_frame() const noexcept {
   switch (control_mode_.load(std::memory_order_acquire)) {
     case ControlMode::POSITION: {
       CanFrame f = CanFrame::make_can_simple(node_id_, kCmdSetInputPos, 8);
@@ -105,8 +125,8 @@ std::optional<CanFrame> ODriveDevice::on_periodic_tx(uint8_t) {
   return std::nullopt;
 }
 
-std::optional<CanFrame> ODriveDevice::on_safe_tx(uint8_t) {
-  // Automatically transmitted when control_timeout expires (SOFT_BLOCK)
+std::optional<CanFrame> ODriveDevice::build_safe_setpoint_frame() const noexcept {
+  // Degraded SOFT_BLOCK behavior when control commands go stale: command 0 velocity & 0 torque FF
   CanFrame f = CanFrame::make_can_simple(node_id_, kCmdSetInputVel, 8);
   pack_float(&f.data[0], 0.0f);
   pack_float(&f.data[4], 0.0f);
