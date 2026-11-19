@@ -72,11 +72,6 @@ private:
   friend class ServiceChannel;
   friend class ImmediateCommand;
 
-  struct PendingPeriodicSpec {
-    std::shared_ptr<PeriodicMessage> msg;
-    std::chrono::microseconds period;
-  };
-
   std::vector<std::shared_ptr<TxMessage>> bind_and_collect_periodic_messages();
   [[noreturn]] static void throw_registration_error(
       const std::shared_ptr<CanDevice>& device);
@@ -102,7 +97,6 @@ private:
 
   std::shared_ptr<CanManager> manager_;
   std::atomic<bool> registered_{false};
-  std::vector<PendingPeriodicSpec> periodic_specs_;
   std::vector<std::shared_ptr<PeriodicMessage>> periodic_messages_;
   std::vector<std::shared_ptr<ServiceChannel>> services_;
 };

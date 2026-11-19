@@ -129,7 +129,6 @@ std::shared_ptr<PeriodicMessage> CanDevice::create_periodic(
       std::move(safe_builder),
       std::chrono::steady_clock::now());
 
-  periodic_specs_.push_back(PendingPeriodicSpec{msg, period});
   periodic_messages_.push_back(msg);
   return msg;
 }
@@ -139,13 +138,12 @@ std::vector<std::shared_ptr<TxMessage>> CanDevice::bind_and_collect_periodic_mes
   const auto self_weak = weak_from_this();
 
   std::vector<std::shared_ptr<TxMessage>> out;
-  out.reserve(periodic_specs_.size());
+  out.reserve(periodic_messages_.size());
 
-  for (auto& spec : periodic_specs_) {
-    spec.msg->bind(self_weak, start_tp);
-    out.push_back(spec.msg);
+  for (const auto& msg : periodic_messages_) {
+    msg->bind(self_weak, start_tp);
+    out.push_back(msg);
   }
-  periodic_specs_.clear();
   return out;
 }
 
