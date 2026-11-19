@@ -10,10 +10,11 @@ NUM_KP = 17
 NUM_FEATURES = NUM_KP * 3  # x, y, confidence <--per keypoint
 L_SHOULDER, R_SHOULDER = 5, 6
 KP_CONF_MIN = 0.3
-
+L_HIP, R_HIP = 11, 12
+TORSE_PER_SHOULDER = 1.6 # typical, use if hips are not visible
+CLIP = 5.0
 
 def normalize_frame (x, y, conf, detected=True):
-    #
 
     if not detected:
         return np.zeros((NUM_KP, 3), np.float32)
@@ -24,14 +25,24 @@ def normalize_frame (x, y, conf, detected=True):
 
     cx = (x[L_SHOULDER] + x[R_SHOULDER]) / 2
     cy = (y[L_SHOULDER] + y[R_SHOULDER]) / 2
-    scale = np.hypot(x[L_SHOULDER] - x[R_SHOULDER], y[L_SHOULDER] - y[R_SHOULDER])
+    shoulder_w = np.hypot(x[L_SHOULDER] - x[R_SHOULDER], y[L_SHOULDER] - y[R_SHOULDER])
+
+    if min(conf[L_HIP], conf[R_HIP]) >= KP_CONF_MIN:
+        # torso length doesn't shrink when you turn, unlike shoulder width
+        hx, hy = (x[L_HIP] + x[R_HIP]) / 2, (y[L_HIP] + y[R_HIP]) / 2
+        scale = np.hypot(hx - cx, hy - cy)
+    else:
+        # hips out of frame (close up): estimate torso length from shoulders
+        scale = shoulder_w * TORSO_PER_SHOULDER
+
     if scale < 1e-3:
         return np.zeros((NUM_KP, 3), np.float32)
 
     valid = conf >= KP_CONF_MIN
-    nx = np.where(valid, (x - cx) / scale, 0.0)
-    ny = np.where(valid, (y - cy) / scale, 0.0)
+    nx = np.clip(np.where(valid, (x - cx) / scale, 0.0), -CLIP, CLIP)
+    ny = np.clip(np.where(valid, (y - cy) / scale, 0.0), -CLIP, CLIP)
     return np.stack([nx, ny, conf], axis=-1).astype(np.float32)
+    
 
 
 def resample_window(times, frames, end_time=None):
