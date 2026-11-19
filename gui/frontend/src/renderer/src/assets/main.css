@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 /*
  * Design tokens. Every color, font and text size in the UI comes from here, so the whole
@@ -31,9 +32,37 @@
   --font-sans: system-ui, -apple-system, 'Segoe UI', Ubuntu, sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'Ubuntu Mono', Menlo, Consolas, monospace;
 
-  /* Extra-small text for pills and dense labels */
-  --text-2xs: 0.6875rem;
-  --text-2xs--line-height: 1rem;
+  /* Square corners everywhere: every rounded-* class resolves to 0. */
+  --radius-*: initial;
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+}
+
+/*
+ * shadcn's color names, as aliases of our tokens, so shadcn components follow our theme.
+ * Use our names (bg-panel, text-fg-muted) in our own code; these exist for design/ui/.
+ */
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-fg);
+  --color-card: var(--color-panel);
+  --color-card-foreground: var(--color-fg);
+  --color-popover: var(--color-panel);
+  --color-popover-foreground: var(--color-fg);
+  --color-primary-foreground: var(--color-bg);
+  --color-secondary: var(--color-panel-raised);
+  --color-secondary-foreground: var(--color-fg-strong);
+  --color-muted: var(--color-panel-raised);
+  --color-muted-foreground: var(--color-fg-muted);
+  --color-accent: var(--color-panel-raised);
+  --color-accent-foreground: var(--color-fg-strong);
+  --color-destructive: var(--color-fault);
+  --color-destructive-foreground: var(--color-fg-strong);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-primary);
 }
 
 /* Electron window dragging: the top bar is the title bar. */

@@ -16,7 +16,7 @@ function App(): React.JSX.Element {
       <span className="text-xs font-semibold tracking-wider">LEGACY ROBOTICS</span>
       <div className="flex items-center gap-3 self-stretch pr-3">
         <span
-          className={`border px-2 py-0.5 font-mono text-2xs tracking-wider ${
+          className={`border px-2 py-0.5 font-mono text-xs tracking-wider ${
             mode === 'control' ? 'text-primary' : 'text-rover'
           }`}
         >

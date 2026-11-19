@@ -50,7 +50,21 @@ The theme is the `@theme` block in `gui/frontend/src/renderer/src/assets/main.cs
 | `fault` | `text-fault`, `bg-fault` | Red: stop, cancel, fault |
 | `rover` | `text-rover`, `bg-rover` | Cyan: our rover and our assets |
 
-Fonts are system stacks (`font-sans`, `font-mono`), because the field has no internet for web fonts. Spacing uses Tailwind's default scale (`p-2`, `gap-3`), and text sizes use Tailwind's scale plus `text-2xs` (11px) for pills and dense labels.
+Fonts are system stacks (`font-sans`, `font-mono`), because the field has no internet for web fonts. Spacing and text sizes use Tailwind's default scales (`p-2`, `gap-3`, `text-xs`).
+
+## shadcn components
+
+[shadcn](https://ui.shadcn.com/) components are copied into the repo, not installed as a package. To add one, from `gui/frontend`:
+
+```bash
+pnpm dlx shadcn@latest add <component>
+```
+
+- The source lands in `src/renderer/src/design/ui/` and is committed. It's ours from then on: restyle it there.
+- Any packages it needs (Radix primitives, `cn`) are added to `package.json` and bundled at build time, so the app still runs offline. Only adding a component needs internet.
+- shadcn's color names (`bg-background`, `bg-card`, `text-muted-foreground`, `bg-destructive`, …) are aliases of our tokens in `main.css`, so its components follow our theme. Use our token names in our own code.
+- `cn()` (from shadcn's `cn` package) joins class names and lets later Tailwind classes override earlier ones: `cn('px-2', isWide && 'px-4')`.
+- Corner radii are all 0, so `rounded-*` classes give square corners.
 
 ## Base components
 
