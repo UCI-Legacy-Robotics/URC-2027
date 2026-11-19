@@ -5,7 +5,8 @@
      Tree: base_link (massless root, for Nav2 / robot_localization / KDL)
              ├─ base_footprint (ground plane)
              └─ chassis_link (chassis body) ─ rockers..., imu_link, gnss_link, zed_camera_link -->
-<robot name="drive_description">
+<robot name="drive_description"
+       xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:arg name="hardware_plugin" default="mock_components/GenericSystem"/>
   <xacro:include filename="ros2_control.xacro"/>
   <xacro:rover_ros2_control hardware_plugin="$(arg hardware_plugin)"/>

@@ -5,6 +5,11 @@
 #include <unordered_set>
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "pluginlib/class_list_macros.hpp"
+#include <memory>
+#include "embedded/core/CanManager.hpp"
+#include "embedded/devices/YellowJacketDevice.hpp"
+
+constexpr double TWO_PI = 6.283185307179586;
 
 namespace yellowjacket_hardware
 {
@@ -115,42 +120,48 @@ CallbackReturn YellowjacketSystem::on_error(const rclcpp_lifecycle::State & stat
 
 return_type YellowjacketSystem::read(const rclcpp::Time &, const rclcpp::Duration &)
 {
-  // TODO: Request/collect bounded-time encoder transactions over the CAN bridge.
-  // Validate complete replies, CRC, node/channel, freshness, sign and encoder rollover.
-  // With N decoded counts per wheel revolution:
-  // positions_[i] = accumulated_counts * 2*pi / N;
-  // velocities_[i] = measured_counts_per_second * 2*pi / N;
-  return return_type::ERROR;
+  for (std::size_t i =0; i<motors_.size() ; i++){
+    positions_[i] = motors_[i]->get_pos() * TWO_PI;
+    velocities_[i] = motors_[i]->get_vel() * TWO_PI;    
+  }
+  return return_type::OK;
 }
 
 return_type YellowjacketSystem::write(const rclcpp::Time &, const rclcpp::Duration &)
 {
-  // TODO: Check finite targets and configured speed limits, then convert:
-  // target_counts_per_second = commands_[i] * N / (2*pi).
-  // Range-check before integer conversion; serialize RoboClaw speed packets plus CRC,
-  // fragment into CAN frames as specified by the PCB, and validate acknowledgements.
-  return return_type::ERROR;
+  for (std::size_t i=0; i<motors_.size(); i++){
+    motors_[i]->set_duty((int)(commands_[i] / 5.3 * 32700));
+  }
+  return return_type::OK;
 }
 
 bool YellowjacketSystem::open_transport()
 {
-  // TODO: Validate per-joint mapping and scaling, open CAN, and check RoboClaw replies.
-  // No placeholder CAN IDs are transmitted by this scaffold.
-  RCLCPP_ERROR(get_logger(),
-    "CAN transport on '%s' is not implemented; hardware configuration refused.",
-    can_interface_.c_str());
-  return false;
+  // Register the six motors using default timeouts (200 ms RX, 100 ms control)
+  // and the default CAN interface, can0.
+  
+  motors_.push_back(YellowJacketDevice::register_device("left_front_wheel_joint", 4));
+  motors_.push_back(YellowJacketDevice::register_device("right_front_wheel_joint", 5));
+  motors_.push_back(YellowJacketDevice::register_device("left_middle_wheel_joint", 6));
+  motors_.push_back(YellowJacketDevice::register_device("right_middle_wheel_joint", 7));
+  motors_.push_back(YellowJacketDevice::register_device("left_back_wheel_joint", 8));
+  motors_.push_back(YellowJacketDevice::register_device("right_back_wheel_joint", 9));
+
+  
+  return true;
 }
 
 bool YellowjacketSystem::stop_motors()
 {
-  // TODO: Send actual zero-speed commands and verify the result with a bounded timeout.
-  return false;
+  for (std::size_t i=0; i<motors_.size(); i++){
+    motors_[i]->set_duty(0);
+  }
+  return true;
 }
 
 void YellowjacketSystem::close_transport()
 {
-  // TODO: Release the CAN socket when one is implemented.
+  motors_.clear();
   connected_ = false;
 }
 

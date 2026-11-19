@@ -7,6 +7,9 @@
 #include "hardware_interface/system_interface.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_lifecycle/state.hpp"
+#include <memory>
+#include "embedded/core/CanManager.hpp"
+#include "embedded/devices/YellowJacketDevice.hpp"
 
 namespace yellowjacket_hardware
 {
@@ -38,6 +41,8 @@ private:
   bool stop_motors();
   void close_transport();
   bool connected_{false};
+  std::shared_ptr<CanManager> can_manager_;
+  std::vector<std::shared_ptr<YellowJacketDevice>> motors_;
   std::string can_interface_{"can0"};
   // Never resize these after exporting pointers into them.
   std::vector<double> commands_;    // Wheel rad/s.

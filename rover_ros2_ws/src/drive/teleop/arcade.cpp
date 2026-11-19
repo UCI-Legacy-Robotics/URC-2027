@@ -23,7 +23,7 @@ private:
 
   void joy_callback(sensor_msgs::msg::Joy::ConstSharedPtr msg){
 
-    if (msg->axes.size() < 3) {
+    if (msg->axes.size() < 4) {
       return;
     }
 

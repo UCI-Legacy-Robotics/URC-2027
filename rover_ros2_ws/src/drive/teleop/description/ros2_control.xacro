@@ -6,6 +6,7 @@
       <hardware>
 
         <plugin>${hardware_plugin}</plugin>
+        <param name="can_interface">can0</param>
       </hardware>
       <joint name = "left_front_wheel_joint">
         <command_interface name="velocity">

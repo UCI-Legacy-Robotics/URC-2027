@@ -59,7 +59,7 @@ private:
   std::atomic<ControlMode> control_mode_{ControlMode::VELOCITY};
   std::atomic<float> target_pos_{0.0f};
   std::atomic<float> target_vel_{0.0f};
-  std::atomic<int32_t> target_duty_{0.0f};
+  std::atomic<int32_t> target_duty_{0};
 
   std::atomic<float> pos_est_{0.0f};
   std::atomic<float> vel_est_{0.0f};
