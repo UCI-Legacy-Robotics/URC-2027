@@ -6,14 +6,14 @@ PeriodicMessage::PeriodicMessage(
     std::chrono::microseconds period,
     FrameBuilder normal_builder,
     FrameBuilder safe_builder,
-    TimePoint start_tp) noexcept
+    Timestamp start_tp) noexcept
     : TxMessage(start_tp),
       device_(std::move(device)),
       period_(period),
       normal_builder_(std::move(normal_builder)),
       safe_builder_(std::move(safe_builder)) {}
 
-TxResult PeriodicMessage::run(TimePoint now) {
+TxResult PeriodicMessage::run(Timestamp now) {
   if (!is_active()) {
     return {std::nullopt, false};
   }
@@ -46,7 +46,7 @@ TxResult PeriodicMessage::run(TimePoint now) {
     }
   }
 
-  TimePoint next = next_tx() + period_;
+  Timestamp next = next_tx() + period_;
   if (next < now) {
     next = now + period_;
   }

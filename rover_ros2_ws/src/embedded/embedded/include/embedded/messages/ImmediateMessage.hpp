@@ -10,12 +10,12 @@ class CanDevice;
 class ImmediateMessage final : public TxMessage {
 public:
   explicit ImmediateMessage(const CanFrame& frame) noexcept
-      : TxMessage(TimePoint::min()), frame_(frame) {}
+      : TxMessage(Timestamp::min()), frame_(frame) {}
 
   ImmediateMessage(const CanFrame& frame, std::chrono::microseconds delay) noexcept
       : TxMessage(std::chrono::steady_clock::now() + delay), frame_(frame) {}
 
-  TxResult run(TimePoint /*now*/) override {
+  TxResult run(Timestamp /*now*/) override {
     if (!is_active()) {
       return {std::nullopt, false};
     }

@@ -10,14 +10,14 @@ ServiceMessage::ServiceMessage(
     const CanFrame& request,
     std::chrono::milliseconds retry_interval,
     uint8_t max_retries) noexcept
-    : TxMessage(TimePoint::min()),
+    : TxMessage(Timestamp::min()),
       channel_(std::move(channel)),
       generation_(generation),
       request_(request),
       retry_interval_(retry_interval),
       max_attempts_(static_cast<uint8_t>(1 + max_retries)) {}
 
-TxResult ServiceMessage::run(TimePoint now) {
+TxResult ServiceMessage::run(Timestamp now) {
   if (!is_active()) {
     return {std::nullopt, false};
   }

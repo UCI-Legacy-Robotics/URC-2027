@@ -30,7 +30,7 @@ public:
       std::chrono::milliseconds retry_interval,
       uint8_t max_retries) noexcept;
 
-  TxResult run(TimePoint now) override;
+  TxResult run(Timestamp now) override;
 
 private:
   std::weak_ptr<ServiceChannel> channel_;
