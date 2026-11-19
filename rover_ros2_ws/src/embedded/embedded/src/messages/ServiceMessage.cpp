@@ -2,22 +2,20 @@
 #include "embedded/core/CanDevice.hpp"
 #include "embedded/core/CanManager.hpp"
 
-#include <algorithm>
-
 ServiceMessage::ServiceMessage(
     std::weak_ptr<ServiceChannel> channel,
     uint32_t generation,
     const CanFrame& request,
     std::chrono::milliseconds retry_interval,
     uint8_t max_retries) noexcept
-    : TxMessage(TimePoint::min()),
+    : TxMessage(Timestamp::min()),
       channel_(std::move(channel)),
       generation_(generation),
       request_(request),
       retry_interval_(retry_interval),
       max_attempts_(static_cast<uint8_t>(1 + max_retries)) {}
 
-TxResult ServiceMessage::run(TimePoint now) {
+TxResult ServiceMessage::run(Timestamp now) {
   if (!is_active()) {
     return {std::nullopt, false};
   }
@@ -38,24 +36,13 @@ TxResult ServiceMessage::run(TimePoint now) {
 }
 
 ServiceChannel::ServiceChannel(CanDevice& owner, AckMatcher matcher)
-    : owner_(owner), matcher_(std::move(matcher)) {
-  std::lock_guard<std::mutex> lock(owner_.services_mutex_);
-  owner_.services_.push_back(this);
-}
-
-ServiceChannel::~ServiceChannel() {
-  cancel();
-  std::lock_guard<std::mutex> lock(owner_.services_mutex_);
-  auto& vec = owner_.services_;
-  vec.erase(std::remove(vec.begin(), vec.end(), this), vec.end());
-}
+    : owner_(owner), matcher_(std::move(matcher)) {}
 
 bool ServiceChannel::send(
     const CanFrame& req,
     std::chrono::milliseconds retry_interval,
     uint8_t max_retries) {
-  auto mgr = owner_.manager_.lock();
-  if (!mgr) {
+  if (!owner_.manager_) {
     return false;
   }
 
@@ -73,7 +60,7 @@ bool ServiceChannel::send(
     state_.store(ServiceState::WAITING, std::memory_order_release);
   }
 
-  mgr->schedule(std::move(msg));
+  owner_.manager_->schedule(std::move(msg));
   return true;
 }
 

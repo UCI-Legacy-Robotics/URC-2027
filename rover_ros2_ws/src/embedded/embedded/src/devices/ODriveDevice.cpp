@@ -1,16 +1,24 @@
 #include "embedded/devices/ODriveDevice.hpp"
 
 #include <cstring>
+#include <utility>
 
 ODriveDevice::ODriveDevice(
     const std::string& name,
     uint8_t node_id,
     std::chrono::milliseconds rx_timeout,
-    std::chrono::milliseconds control_timeout)
-    : CanDevice(name, CanFilter::can_simple(node_id), rx_timeout, control_timeout),
+    std::chrono::milliseconds control_timeout,
+    std::string manager_name)
+    : CanDeviceFactory<ODriveDevice>(
+          name,
+          CanFilter::can_simple(node_id),
+          rx_timeout,
+          control_timeout,
+          std::move(manager_name),
+          node_id),
       node_id_(node_id),
       setpoint_periodic_(create_periodic(
-          std::chrono::microseconds(1000000),  // BS test val
+          std::chrono::microseconds(20000), // 50 Hz
           [this]() { return build_normal_setpoint_frame(); },
           [this]() { return build_safe_setpoint_frame(); })),
       axis_service_(create_service([this](const CanFrame& f) {
@@ -19,8 +27,12 @@ ODriveDevice::ODriveDevice(
                f.data[4] ==
                    static_cast<uint8_t>(expected_axis_state_.load(std::memory_order_acquire));
       })),
-      set_origin_cmd_(*this, CanFrame::make_can_simple(node_id, kCmdSetAbsolutePos, 4)),
-      clear_errors_cmd_(*this, CanFrame::make_can_simple(node_id, kCmdClearErrors, 0)) {}
+      set_origin_cmd_(create_immediate([this]() -> std::optional<CanFrame> {
+        return CanFrame::make_can_simple(node_id_, kCmdSetAbsolutePos, 4);
+      })),
+      clear_errors_cmd_(create_immediate([this]() -> std::optional<CanFrame> {
+        return CanFrame::make_can_simple(node_id_, kCmdClearErrors, 0);
+      })) {}
 
 void ODriveDevice::set_pos(float pos_rev) noexcept {
   target_pos_.store(pos_rev, std::memory_order_release);

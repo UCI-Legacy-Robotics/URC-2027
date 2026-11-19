@@ -12,6 +12,7 @@
 #include <optional>
 
 class CanDevice;
+class CanManager;
 class ServiceChannel;
 
 enum class ServiceState : uint8_t {
@@ -30,7 +31,7 @@ public:
       std::chrono::milliseconds retry_interval,
       uint8_t max_retries) noexcept;
 
-  TxResult run(TimePoint now) override;
+  TxResult run(Timestamp now) override;
 
 private:
   std::weak_ptr<ServiceChannel> channel_;
@@ -45,17 +46,19 @@ class ServiceChannel : public std::enable_shared_from_this<ServiceChannel> {
 public:
   using AckMatcher = std::function<bool(const CanFrame&)>;
 
-  ServiceChannel(CanDevice& owner, AckMatcher matcher);
-  ~ServiceChannel();
+  ~ServiceChannel() = default;
 
   bool send(const CanFrame& req, std::chrono::milliseconds retry_interval, uint8_t max_retries);
   std::optional<CanFrame> take_response();
   ServiceState state() const noexcept { return state_.load(std::memory_order_acquire); }
-  void cancel();
 
 private:
   friend class CanDevice;
+  friend class CanManager;
   friend class ServiceMessage;
+
+  ServiceChannel(CanDevice& owner, AckMatcher matcher);
+  void cancel();
 
   bool try_match_ack(const CanFrame& frame);
   bool is_generation_waiting(uint32_t gen) const noexcept;

@@ -4,18 +4,20 @@
 #include "embedded/core/TxMessage.hpp"
 
 #include <chrono>
+#include <functional>
+#include <optional>
 
 class CanDevice;
 
 class ImmediateMessage final : public TxMessage {
 public:
   explicit ImmediateMessage(const CanFrame& frame) noexcept
-      : TxMessage(TimePoint::min()), frame_(frame) {}
+      : TxMessage(Timestamp::min()), frame_(frame) {}
 
   ImmediateMessage(const CanFrame& frame, std::chrono::microseconds delay) noexcept
       : TxMessage(std::chrono::steady_clock::now() + delay), frame_(frame) {}
 
-  TxResult run(TimePoint /*now*/) override {
+  TxResult run(Timestamp /*now*/) override {
     if (!is_active()) {
       return {std::nullopt, false};
     }
@@ -26,19 +28,20 @@ private:
   CanFrame frame_;
 };
 
-// Member descriptor for derived devices: outlines fixed one-shot commands in the class header
-// while spawning a fresh immutable ImmediateMessage per send() so back-to-back calls never race.
+// Builder-backed device command that snapshots a fresh immutable frame on each send.
 class ImmediateCommand {
 public:
-  ImmediateCommand(CanDevice& owner, const CanFrame& default_frame) noexcept
-      : owner_(owner), default_frame_(default_frame) {}
+  using FrameBuilder = std::function<std::optional<CanFrame>()>;
 
+  ImmediateCommand(CanDevice& owner, FrameBuilder builder);
+
+  // Builder-backed commands snapshot their frame on the calling thread.
   bool send() const;
-  bool send(const CanFrame& override_frame) const;
+  bool send(const CanFrame& frame) const;
   bool send_delayed(std::chrono::microseconds delay) const;
-  bool send_delayed(const CanFrame& override_frame, std::chrono::microseconds delay) const;
+  bool send_delayed(const CanFrame& frame, std::chrono::microseconds delay) const;
 
 private:
   CanDevice& owner_;
-  CanFrame default_frame_;
+  FrameBuilder builder_;
 };

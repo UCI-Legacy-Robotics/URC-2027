@@ -1,24 +1,44 @@
 #include "embedded/devices/YellowJacketDevice.hpp"
 
 #include <cstring>
+#include <utility>
 
 YellowJacketDevice::YellowJacketDevice(
     const std::string& name,
     uint8_t node_id,
     std::chrono::milliseconds rx_timeout,
-    std::chrono::milliseconds control_timeout)
-    : CanDevice(name, CanFilter::can_simple(node_id), rx_timeout, control_timeout),
+    std::chrono::milliseconds control_timeout,
+    std::string manager_name)
+    : CanDeviceFactory<YellowJacketDevice>(
+          name,
+          CanFilter::can_simple(node_id),
+          rx_timeout,
+          control_timeout,
+          std::move(manager_name),
+          node_id),
       node_id_(node_id),
       setpoint_periodic_(create_periodic(
           std::chrono::microseconds(1000000),  // BS test val
           [this]() { return build_normal_setpoint_frame(); },
           [this]() { return build_safe_setpoint_frame(); })),
-      set_controller_mode_cmd_(*this, CanFrame::make_can_simple(node_id, kCmdSetControllerMode, 8)) {}
+      set_controller_mode_cmd_(create_immediate([this]() -> std::optional<CanFrame> {
+        CanFrame frame = CanFrame::make_can_simple(node_id_, kCmdSetControllerMode, 8);
+        const uint8_t control_mode_bytes[8] = {
+            0x00,
+            0x00,
+            0x00,
+            0x05,
+            0x00,
+            static_cast<uint8_t>(control_mode_.load(std::memory_order_acquire)),
+            0x00,
+            0x00};
+        std::memcpy(frame.data.data(), control_mode_bytes, sizeof(control_mode_bytes));
+        return frame;
+      })) {}
 
 void YellowJacketDevice::set_pos(float pos_rev) noexcept {
   target_pos_.store(pos_rev, std::memory_order_release);
   control_mode_.store(ControlMode::POSITION, std::memory_order_release);
-  set_controller_mode_cmd_.send();
   set_controller_mode();
   mark_control_updated();
 }
@@ -39,10 +59,7 @@ void YellowJacketDevice::set_duty(int32_t duty_pwm) noexcept {
 }
 
 bool YellowJacketDevice::set_controller_mode() noexcept {
-  CanFrame frame = CanFrame::make_can_simple(node_id_, kCmdSetControllerMode, 8);
-  uint8_t control_mode_bytes[8] = {0x00, 0x00, 0x00, 0x05, 0x00, static_cast<uint8_t>(control_mode_.load(std::memory_order_acquire)), 0x00, 0x00};
-  std::memcpy(frame.data.data(), control_mode_bytes, sizeof(control_mode_bytes));
-  return set_controller_mode_cmd_.send(frame);
+  return set_controller_mode_cmd_.send();
 }
 
 void YellowJacketDevice::on_rx(const CanFrame& frame) {

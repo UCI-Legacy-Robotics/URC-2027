@@ -1,6 +1,8 @@
 #include "embedded/core/CanDevice.hpp"
 #include "embedded/core/CanManager.hpp"
 
+#include <stdexcept>
+
 namespace {
 constexpr uint8_t kRecoveryFramesRequired = 3;
 }
@@ -9,28 +11,103 @@ CanDevice::CanDevice(
     std::string name,
     CanFilter filter,
     std::chrono::milliseconds rx_timeout,
-    std::chrono::milliseconds control_timeout)
+    std::chrono::milliseconds control_timeout,
+    std::string manager_name,
+    std::optional<uint32_t> id)
     : name_(std::move(name)),
+      manager_name_(std::move(manager_name)),
       filter_(filter),
+      id_(id.value_or(filter.id)),
       rx_timeout_ns_(std::chrono::duration_cast<std::chrono::nanoseconds>(rx_timeout).count()),
       control_timeout_ns_(
-          std::chrono::duration_cast<std::chrono::nanoseconds>(control_timeout).count()) {
+          std::chrono::duration_cast<std::chrono::nanoseconds>(control_timeout).count()),
+      manager_(CanManager::get_instance(manager_name_)) {
   const int64_t t = now_ns();
   last_rx_ns_.store(t, std::memory_order_relaxed);
   last_control_ns_.store(t, std::memory_order_relaxed);
 }
 
+void CanDevice::register_with_manager(const std::shared_ptr<CanDevice>& device) {
+  if (!device) {
+    throw std::invalid_argument("Cannot register a null CAN device");
+  }
+  if (device->name().empty()) {
+    throw std::invalid_argument("CAN device name cannot be empty");
+  }
+  if (device->manager_name().empty()) {
+    throw std::invalid_argument("CAN manager name cannot be empty");
+  }
+  if (!device->manager_->register_device(device)) {
+    throw_registration_error(device);
+  }
+}
+
+void CanDevice::throw_registration_error(const std::shared_ptr<CanDevice>& device) {
+  for (const auto& existing : device->manager_->get_all_devices()) {
+    if (existing->name() == device->name()) {
+      throw std::runtime_error(
+          "CAN device name '" + device->name() + "' is already registered");
+    }
+    if (existing->id() == device->id()) {
+      throw std::runtime_error(
+          "CAN device ID " + std::to_string(device->id()) + " is already registered");
+    }
+    if (device->filter().overlaps(existing->filter())) {
+      throw std::runtime_error(
+          "CAN filter for device '" + device->name() + "' overlaps device '" +
+          existing->name() + "'");
+    }
+  }
+  throw std::runtime_error("Failed to register CAN device '" + device->name() + "'");
+}
+
+std::shared_ptr<CanDevice> CanDevice::find_registered_device(
+    const std::optional<std::string>& name,
+    const std::optional<uint32_t>& id,
+    const std::string& manager_name) {
+  if ((!name || name->empty()) && !id) {
+    throw std::invalid_argument("Find a CAN device by name, ID, or both");
+  }
+  if (manager_name.empty()) {
+    throw std::invalid_argument("CAN manager name cannot be empty");
+  }
+
+  const auto manager = CanManager::get_instance(manager_name);
+  std::shared_ptr<CanDevice> by_name;
+  std::shared_ptr<CanDevice> by_id;
+
+  if (name && !name->empty()) {
+    by_name = manager->get_device(*name);
+    if (!by_name) {
+      throw std::runtime_error("No CAN device named '" + *name +
+                               "' is registered on '" + manager_name + "'");
+    }
+  }
+  if (id) {
+    by_id = manager->get_device(*id);
+    if (!by_id) {
+      throw std::runtime_error("No CAN device with ID " + std::to_string(*id) +
+                               " is registered on '" + manager_name + "'");
+    }
+  }
+  if (by_name && by_id && by_name != by_id) {
+    throw std::runtime_error("The requested CAN device name and ID identify different devices");
+  }
+  return by_name ? by_name : by_id;
+}
+
 CanDevice::~CanDevice() {
+  if (registered_.exchange(false, std::memory_order_acq_rel)) {
+    manager_->deregister_device(name_, this);
+  }
+
   for (auto& msg : periodic_messages_) {
     if (msg) {
       msg->cancel();
     }
   }
-  std::lock_guard<std::mutex> lock(services_mutex_);
-  for (ServiceChannel* svc : services_) {
-    if (svc) {
-      svc->cancel();
-    }
+  for (const auto& svc : services_) {
+    svc->cancel();
   }
 }
 
@@ -52,7 +129,6 @@ std::shared_ptr<PeriodicMessage> CanDevice::create_periodic(
       std::move(safe_builder),
       std::chrono::steady_clock::now());
 
-  periodic_specs_.push_back(PendingPeriodicSpec{msg, period});
   periodic_messages_.push_back(msg);
   return msg;
 }
@@ -62,35 +138,23 @@ std::vector<std::shared_ptr<TxMessage>> CanDevice::bind_and_collect_periodic_mes
   const auto self_weak = weak_from_this();
 
   std::vector<std::shared_ptr<TxMessage>> out;
-  out.reserve(periodic_specs_.size());
+  out.reserve(periodic_messages_.size());
 
-  for (auto& spec : periodic_specs_) {
-    spec.msg->bind(self_weak, start_tp);
-    out.push_back(spec.msg);
+  for (const auto& msg : periodic_messages_) {
+    msg->bind(self_weak, start_tp);
+    out.push_back(msg);
   }
-  periodic_specs_.clear();
   return out;
 }
 
 std::shared_ptr<ServiceChannel> CanDevice::create_service(ServiceChannel::AckMatcher matcher) {
-  return std::make_shared<ServiceChannel>(*this, std::move(matcher));
+  auto service = std::shared_ptr<ServiceChannel>(new ServiceChannel(*this, std::move(matcher)));
+  services_.push_back(service);
+  return service;
 }
 
-bool CanDevice::send_immediate(const CanFrame& frame) {
-  return schedule_message(std::make_shared<ImmediateMessage>(frame));
-}
-
-bool CanDevice::send_delayed(const CanFrame& frame, std::chrono::microseconds delay) {
-  return schedule_message(std::make_shared<ImmediateMessage>(frame, delay));
-}
-
-bool CanDevice::schedule_message(std::shared_ptr<TxMessage> msg) {
-  auto mgr = manager_.lock();
-  if (!mgr || !msg) {
-    return false;
-  }
-  mgr->schedule(std::move(msg));
-  return true;
+ImmediateCommand CanDevice::create_immediate(ImmediateCommand::FrameBuilder builder) {
+  return ImmediateCommand(*this, std::move(builder));
 }
 
 void CanDevice::mark_control_updated() noexcept {
@@ -117,12 +181,9 @@ void CanDevice::handle_rx(const CanFrame& frame) {
     }
   }
 
-  {
-    std::lock_guard<std::mutex> lock(services_mutex_);
-    for (ServiceChannel* svc : services_) {
-      if (svc && svc->try_match_ack(frame)) {
-        break;
-      }
+  for (const auto& svc : services_) {
+    if (svc->try_match_ack(frame)) {
+      break;
     }
   }
 

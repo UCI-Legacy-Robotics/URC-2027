@@ -13,19 +13,13 @@
 #include <optional>
 #include <string>
 
-class YellowJacketDevice : public CanDevice {
+class YellowJacketDevice : public CanDeviceFactory<YellowJacketDevice> {
 public:
   enum class ControlMode : uint8_t {
     POSITION = 4,
     VELOCITY = 3,
     DUTY_CYCLE = 1
   };
-
-  YellowJacketDevice(
-      const std::string& name,
-      uint8_t node_id,
-      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(200),
-      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(100));
 
   // --- Continuous Setpoints (Sampled at 200 Hz by setpoint_periodic_) ---
   void set_pos(float pos_rev) noexcept;
@@ -40,6 +34,15 @@ protected:
   void on_rx(const CanFrame& frame) override;
 
 private:
+  friend class CanDeviceFactory<YellowJacketDevice>;
+
+  YellowJacketDevice(
+      const std::string& name,
+      uint8_t node_id,
+      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(200),
+      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(100),
+      std::string manager_name = "can0");
+
   // YellowJacket CANSimple Command IDs
   static constexpr uint8_t kCmdHeartbeat = 0x001;
   static constexpr uint8_t kCmdGetEncoderEstimates = 0x009;
