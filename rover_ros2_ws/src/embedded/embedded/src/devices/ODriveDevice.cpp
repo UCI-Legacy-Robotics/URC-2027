@@ -1,51 +1,7 @@
 #include "embedded/devices/ODriveDevice.hpp"
 
 #include <cstring>
-#include <stdexcept>
 #include <utility>
-
-std::shared_ptr<ODriveDevice> ODriveDevice::register_device(
-    const std::string& name,
-    uint8_t node_id,
-    std::chrono::milliseconds rx_timeout,
-    std::chrono::milliseconds control_timeout,
-    const std::string& manager_name) {
-  auto device = std::shared_ptr<ODriveDevice>(
-      new ODriveDevice(name, node_id, rx_timeout, control_timeout, manager_name));
-  CanDevice::register_with_manager(device);
-  return device;
-}
-
-std::shared_ptr<ODriveDevice> ODriveDevice::find_device(
-    const std::string& name,
-    const std::string& manager_name) {
-  return find_device_impl(std::optional<std::string>{name}, std::nullopt, manager_name);
-}
-
-std::shared_ptr<ODriveDevice> ODriveDevice::find_device(
-    uint32_t id,
-    const std::string& manager_name) {
-  return find_device_impl(std::nullopt, id, manager_name);
-}
-
-std::shared_ptr<ODriveDevice> ODriveDevice::find_device_impl(
-    const std::optional<std::string>& name,
-    const std::optional<uint32_t>& id,
-    const std::string& manager_name) {
-  auto device = CanDevice::find_registered_device(name, id, manager_name);
-  auto odrive = std::dynamic_pointer_cast<ODriveDevice>(device);
-  if (!odrive) {
-    if (name) {
-      throw std::runtime_error("CAN device named '" + *name + "' is not an ODrive");
-    }
-    if (id) {
-      throw std::runtime_error(
-          "CAN device with ID " + std::to_string(*id) + " is not an ODrive");
-    }
-    throw std::runtime_error("Found CAN device is not an ODrive");
-  }
-  return odrive;
-}
 
 ODriveDevice::ODriveDevice(
     const std::string& name,
@@ -53,7 +9,7 @@ ODriveDevice::ODriveDevice(
     std::chrono::milliseconds rx_timeout,
     std::chrono::milliseconds control_timeout,
     std::string manager_name)
-    : CanDevice(
+    : CanDeviceFactory<ODriveDevice>(
           name,
           CanFilter::can_simple(node_id),
           rx_timeout,

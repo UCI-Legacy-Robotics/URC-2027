@@ -13,21 +13,8 @@
 #include <optional>
 #include <string>
 
-class ODriveDevice : public CanDevice {
+class ODriveDevice : public CanDeviceFactory<ODriveDevice> {
 public:
-  static std::shared_ptr<ODriveDevice> register_device(
-      const std::string& name,
-      uint8_t node_id,
-      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(100),
-      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(50),
-      const std::string& manager_name = "can0");
-  static std::shared_ptr<ODriveDevice> find_device(
-      const std::string& name,
-      const std::string& manager_name = "can0");
-  static std::shared_ptr<ODriveDevice> find_device(
-      uint32_t id,
-      const std::string& manager_name = "can0");
-
   enum class ControlMode : uint8_t {
     POSITION,
     VELOCITY,
@@ -69,17 +56,14 @@ protected:
   void on_rx(const CanFrame& frame) override;
 
 private:
-  static std::shared_ptr<ODriveDevice> find_device_impl(
-      const std::optional<std::string>& name,
-      const std::optional<uint32_t>& id,
-      const std::string& manager_name);
+  friend class CanDeviceFactory<ODriveDevice>;
 
   ODriveDevice(
       const std::string& name,
       uint8_t node_id,
-      std::chrono::milliseconds rx_timeout,
-      std::chrono::milliseconds control_timeout,
-      std::string manager_name);
+      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(100),
+      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(50),
+      std::string manager_name = "can0");
 
   // ODrive CANSimple Command IDs
   static constexpr uint8_t kCmdHeartbeat = 0x001;

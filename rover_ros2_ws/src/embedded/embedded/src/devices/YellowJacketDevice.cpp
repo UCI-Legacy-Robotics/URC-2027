@@ -1,36 +1,7 @@
 #include "embedded/devices/YellowJacketDevice.hpp"
 
 #include <cstring>
-#include <stdexcept>
 #include <utility>
-
-std::shared_ptr<YellowJacketDevice> YellowJacketDevice::register_device(
-    const std::string& name,
-    uint8_t node_id,
-    std::chrono::milliseconds rx_timeout,
-    std::chrono::milliseconds control_timeout,
-    const std::string& manager_name) {
-  auto device = std::shared_ptr<YellowJacketDevice>(
-      new YellowJacketDevice(name, node_id, rx_timeout, control_timeout, manager_name));
-  CanDevice::register_with_manager(device);
-  return device;
-}
-
-std::shared_ptr<YellowJacketDevice> YellowJacketDevice::find_device(
-    std::optional<std::string> name,
-    std::optional<uint32_t> id,
-    const std::string& manager_name) {
-  auto device = CanDevice::find_registered_device(name, id, manager_name);
-  auto controller = std::dynamic_pointer_cast<YellowJacketDevice>(device);
-  if (!controller) {
-    if (name && !name->empty()) {
-      throw std::runtime_error("CAN device named '" + *name + "' is not a YellowJacket");
-    }
-    throw std::runtime_error(
-        "CAN device with ID " + std::to_string(*id) + " is not a YellowJacket");
-  }
-  return controller;
-}
 
 YellowJacketDevice::YellowJacketDevice(
     const std::string& name,
@@ -38,7 +9,7 @@ YellowJacketDevice::YellowJacketDevice(
     std::chrono::milliseconds rx_timeout,
     std::chrono::milliseconds control_timeout,
     std::string manager_name)
-    : CanDevice(
+    : CanDeviceFactory<YellowJacketDevice>(
           name,
           CanFilter::can_simple(node_id),
           rx_timeout,

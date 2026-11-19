@@ -13,19 +13,8 @@
 #include <optional>
 #include <string>
 
-class YellowJacketDevice : public CanDevice {
+class YellowJacketDevice : public CanDeviceFactory<YellowJacketDevice> {
 public:
-  static std::shared_ptr<YellowJacketDevice> register_device(
-      const std::string& name,
-      uint8_t node_id,
-      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(200),
-      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(100),
-      const std::string& manager_name = "can0");
-  static std::shared_ptr<YellowJacketDevice> find_device(
-      std::optional<std::string> name = std::nullopt,
-      std::optional<uint32_t> id = std::nullopt,
-      const std::string& manager_name = "can0");
-
   enum class ControlMode : uint8_t {
     POSITION = 4,
     VELOCITY = 3,
@@ -45,12 +34,14 @@ protected:
   void on_rx(const CanFrame& frame) override;
 
 private:
+  friend class CanDeviceFactory<YellowJacketDevice>;
+
   YellowJacketDevice(
       const std::string& name,
       uint8_t node_id,
-      std::chrono::milliseconds rx_timeout,
-      std::chrono::milliseconds control_timeout,
-      std::string manager_name);
+      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(200),
+      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(100),
+      std::string manager_name = "can0");
 
   // YellowJacket CANSimple Command IDs
   static constexpr uint8_t kCmdHeartbeat = 0x001;

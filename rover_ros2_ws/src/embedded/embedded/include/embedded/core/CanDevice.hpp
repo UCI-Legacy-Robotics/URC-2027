@@ -11,7 +11,9 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 class CanManager;
@@ -99,4 +101,62 @@ private:
   std::atomic<bool> registered_{false};
   std::vector<std::shared_ptr<PeriodicMessage>> periodic_messages_;
   std::vector<std::shared_ptr<ServiceChannel>> services_;
+};
+
+template <typename Derived>
+class CanDeviceFactory : public CanDevice {
+protected:
+  using CanDevice::CanDevice;
+
+public:
+  template <typename... Args>
+  static std::shared_ptr<Derived> register_device(Args&&... args) {
+    auto device = std::shared_ptr<Derived>(new Derived(std::forward<Args>(args)...));
+    register_with_manager(device);
+    return device;
+  }
+
+  static std::shared_ptr<Derived> find_device(
+      const std::string& name,
+      const std::string& manager_name = "can0") {
+    return find_device_impl(name, std::nullopt, manager_name);
+  }
+
+  static std::shared_ptr<Derived> find_device(
+      uint32_t id,
+      const std::string& manager_name = "can0") {
+    return find_device_impl(std::nullopt, id, manager_name);
+  }
+
+  static std::shared_ptr<Derived> find_device() {
+    return find_device_impl(std::nullopt, std::nullopt, "can0");
+  }
+
+  static std::shared_ptr<Derived> find_device(
+      const std::optional<std::string>& name,
+      const std::optional<uint32_t>& id,
+      const std::string& manager_name = "can0") {
+    return find_device_impl(name, id, manager_name);
+  }
+
+private:
+  static std::shared_ptr<Derived> find_device_impl(
+      const std::optional<std::string>& name,
+      const std::optional<uint32_t>& id,
+      const std::string& manager_name) {
+    auto device = find_registered_device(name, id, manager_name);
+    auto typed_device = std::dynamic_pointer_cast<Derived>(device);
+    if (!typed_device) {
+      if (name && !name->empty()) {
+        throw std::runtime_error(
+            "CAN device named '" + *name + "' has a different device type");
+      }
+      if (id) {
+        throw std::runtime_error(
+            "CAN device with ID " + std::to_string(*id) + " has a different device type");
+      }
+      throw std::runtime_error("Found CAN device has a different device type");
+    }
+    return typed_device;
+  }
 };
