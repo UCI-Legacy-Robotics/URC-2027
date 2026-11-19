@@ -4,9 +4,12 @@
 /*
  * Design tokens. Every color, font and text size in the UI comes from here, so the whole
  * app can be restyled in one place. Placeholder values: task A2 sets the real ones.
- * See docs/gui/design.md.
+ * See docs/gui/design.md and the style guide in Storybook.
+ *
+ * `static`: always output every token as a CSS variable, even unused ones, so code can read
+ * them at runtime (the style guide, and canvas-drawn plots and maps later).
  */
-@theme {
+@theme static {
   /* Drop Tailwind's default palette: only our tokens exist (bg-panel, not bg-zinc-900). */
   --color-*: initial;
 

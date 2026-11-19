@@ -33,6 +33,8 @@ Semantic colors, used sparingly:
 
 Design tokens are named values (colors, spacing, font sizes, borders) that every widget uses instead of raw values. They're defined once in the Tailwind theme, so the whole app can be restyled in one place. Widgets never hard-code hex values or pixel sizes.
 
+To see every token and base component rendered, open the **style guide** in Storybook (`pnpm storybook`, then *Design / Style guide*). It reads the live values, so it always matches the theme.
+
 The theme is the `@theme` block in `gui/frontend/src/renderer/src/assets/main.css`. Tailwind's default color palette is removed, so only these colors exist: `bg-panel` works, `bg-zinc-900` doesn't. The values are placeholders until task A2.
 
 | Token | Tailwind classes | Use |
