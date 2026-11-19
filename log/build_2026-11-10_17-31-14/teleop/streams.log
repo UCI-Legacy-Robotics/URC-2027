@@ -1,0 +1,63 @@
+[0.010s] Invoking command in '/home/tommy/URC-2027/build/teleop': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake /home/tommy/URC-2027/rover_ros2_ws/src/drive/teleop -DCMAKE_INSTALL_PREFIX=/home/tommy/URC-2027/install/teleop
+[0.080s] -- The C compiler identification is GNU 13.3.0
+[0.143s] -- The CXX compiler identification is GNU 13.3.0
+[0.165s] -- Detecting C compiler ABI info
+[0.278s] -- Detecting C compiler ABI info - done
+[0.287s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.287s] -- Detecting C compile features
+[0.287s] -- Detecting C compile features - done
+[0.299s] -- Detecting CXX compiler ABI info
+[0.420s] -- Detecting CXX compiler ABI info - done
+[0.431s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.432s] -- Detecting CXX compile features
+[0.432s] -- Detecting CXX compile features - done
+[0.437s] -- Found ament_cmake: 2.5.6 (/opt/ros/jazzy/share/ament_cmake/cmake)
+[0.610s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter 
+[0.749s] -- Found rclcpp: 28.1.22 (/opt/ros/jazzy/share/rclcpp/cmake)
+[0.811s] -- Found rosidl_generator_c: 4.6.9 (/opt/ros/jazzy/share/rosidl_generator_c/cmake)
+[0.832s] -- Found rosidl_generator_cpp: 4.6.9 (/opt/ros/jazzy/share/rosidl_generator_cpp/cmake)
+[0.854s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.880s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.979s] -- Found rmw_implementation_cmake: 7.3.4 (/opt/ros/jazzy/share/rmw_implementation_cmake/cmake)
+[0.984s] -- Found rmw_fastrtps_cpp: 8.4.4 (/opt/ros/jazzy/share/rmw_fastrtps_cpp/cmake)
+[1.120s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.13")  
+[1.144s] -- Found FastRTPS: /opt/ros/jazzy/include (Required is at least version "2.13") 
+[1.172s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[1.270s] -- Found geometry_msgs: 5.3.8 (/opt/ros/jazzy/share/geometry_msgs/cmake)
+[1.308s] -- Found sensor_msgs: 5.3.8 (/opt/ros/jazzy/share/sensor_msgs/cmake)
+[1.431s] -- Configuring done (1.4s)
+[1.444s] -- Generating done (0.0s)
+[1.449s] -- Build files have been written to: /home/tommy/URC-2027/build/teleop
+[1.460s] Invoked command in '/home/tommy/URC-2027/build/teleop' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake /home/tommy/URC-2027/rover_ros2_ws/src/drive/teleop -DCMAKE_INSTALL_PREFIX=/home/tommy/URC-2027/install/teleop
+[1.462s] Invoking command in '/home/tommy/URC-2027/build/teleop': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/tommy/URC-2027/build/teleop -- -j12 -l12
+[1.531s] [ 50%] [32mBuilding CXX object CMakeFiles/arcade.dir/arcade.cpp.o[0m
+[8.660s] [100%] [32m[1mLinking CXX executable arcade[0m
+[9.046s] [100%] Built target arcade
+[9.063s] Invoked command in '/home/tommy/URC-2027/build/teleop' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/tommy/URC-2027/build/teleop -- -j12 -l12
+[9.077s] Invoking command in '/home/tommy/URC-2027/build/teleop': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/tommy/URC-2027/build/teleop
+[9.087s] -- Install configuration: ""
+[9.087s] -- Installing: /home/tommy/URC-2027/install/teleop/lib/teleop/arcade
+[9.094s] -- Set non-toolchain portion of runtime path of "/home/tommy/URC-2027/install/teleop/lib/teleop/arcade" to ""
+[9.094s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/description
+[9.094s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/description/ros2_control.xacro
+[9.094s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/description/drive_description.urdf
+[9.094s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/config
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/config/rover_controllers.yaml
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/launch
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/launch/mock_control.launch.py
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/ament_index/resource_index/package_run_dependencies/teleop
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/ament_index/resource_index/parent_prefix_path/teleop
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/environment/ament_prefix_path.sh
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/environment/ament_prefix_path.dsv
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/environment/path.sh
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/environment/path.dsv
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/local_setup.bash
+[9.095s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/local_setup.sh
+[9.096s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/local_setup.zsh
+[9.096s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/local_setup.dsv
+[9.096s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/package.dsv
+[9.096s] -- Installing: /home/tommy/URC-2027/install/teleop/share/ament_index/resource_index/packages/teleop
+[9.096s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/cmake/teleopConfig.cmake
+[9.096s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/cmake/teleopConfig-version.cmake
+[9.097s] -- Installing: /home/tommy/URC-2027/install/teleop/share/teleop/package.xml
+[9.099s] Invoked command in '/home/tommy/URC-2027/build/teleop' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/tommy/URC-2027/build/teleop

@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Include this file in the rover URDF and call this macro once. -->
+  <xacro:macro name="rover_ros2_control" params="name:=RoverSystem">
+    <ros2_control name="URC_2027_drive" type="system">
+      <hardware>
+        <!-- Start with mock hardware; replace with a driver or Gazebo plugin later. -->
+        <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+      </hardware>
+      <joint name="left_front_wheel">
+        <command_interface name="velocity">
+          <param name="min">-10</param>
+          <param name="max">10</param>
+        </command_interface>
+        <state_interface name="velocity"/>
+        <state_interface name="position"/>
+      </joint>
+      <joint name="left_front_wheel">
+        <command_interface name="velocity">
+          <param name="min">-10</param>
+          <param name="max">10</param>
+        </command_interface>
+        <state_interface name="velocity"/>
+        <state_interface name="position"/>
+      </joint>
+      <joint name="left_front_wheel">
+        <command_interface name="velocity">
+          <param name="min">-10</param>
+          <param name="max">10</param>
+        </command_interface>
+        <state_interface name="velocity"/>
+        <state_interface name="position"/>
+      </joint>
+      <joint name="left_front_wheel">
+        <command_interface name="velocity">
+          <param name="min">-10</param>
+          <param name="max">10</param>
+        </command_interface>
+        <state_interface name="velocity"/>
+        <state_interface name="position"/>
+      </joint>
+      <joint name="left_front_wheel">
+        <command_interface name="velocity">
+          <param name="min">-10</param>
+          <param name="max">10</param>
+        </command_interface>
+        <state_interface name="velocity"/>
+        <state_interface name="position"/>
+      </joint>
+
+
+      <!-- TODO: Add six wheel joints with velocity command interfaces (rad/s). -->
+      <!-- TODO: Add two front steering joints with position command interfaces (rad). -->
+      <!-- Joint names must match the corresponding joints in the rover URDF. -->
+    </ros2_control>
+  </xacro:macro>
+</robot>

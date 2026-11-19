@@ -1,0 +1,21 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 50
+    use_sim_time: false
+    diff_cont:
+      type: diff_drive_controller/DiffDriveController
+    joint_broad:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+diff_cont:
+  ros__parameters:
+    left_wheel_names: ['left_front_wheel_joint', 'left_middle_wheel_joint', 'left_back_wheel_joint']
+    right_wheel_names: ['right_front_wheel_joint', 'right_middle_wheel_joint', 'right_back_wheel_joint']
+    # Provisional: verify tire center spacing and rolling radius in CAD.
+    wheel_separation: 0.6453
+    wheel_radius: 0.15
+    position_feedback: false
+    open_loop: false
+
+    publish_rate: 50.0
+    
