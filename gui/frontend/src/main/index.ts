@@ -5,8 +5,18 @@ import icon from '../../resources/icon.png?asset'
 
 const isMac = process.platform === 'darwin'
 
-function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+/** Screens the UI can show, one per window. Keep in sync with src/renderer/src/app/screens.ts. */
+const screens = ['main', 'video'] as const
+type Screen = (typeof screens)[number]
+
+const isScreen = (value: unknown): value is Screen =>
+  typeof value === 'string' && (screens as readonly string[]).includes(value)
+
+/** At most one window per screen. */
+const screenWindows = new Map<Screen, BrowserWindow>()
+
+function createWindow(screen: Screen): BrowserWindow {
+  const win = new BrowserWindow({
     width: 1440,
     height: 900,
     show: false,
@@ -22,27 +32,50 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+  screenWindows.set(screen, win)
+  win.on('closed', () => {
+    screenWindows.delete(screen)
+    // The main window owns the session: closing it closes the other screens too.
+    if (screen === 'main') {
+      for (const other of screenWindows.values()) other.close()
+    }
+  })
+
+  win.on('ready-to-show', () => {
+    win.show()
   })
 
   // Tell the UI so the maximize button can switch to "restore".
-  const sendMaximized = (): void =>
-    mainWindow.webContents.send('window:maximized', mainWindow.isMaximized())
-  mainWindow.on('maximize', sendMaximized)
-  mainWindow.on('unmaximize', sendMaximized)
+  const sendMaximized = (): void => win.webContents.send('window:maximized', win.isMaximized())
+  win.on('maximize', sendMaximized)
+  win.on('unmaximize', sendMaximized)
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
+  // The URL hash tells the UI which screen to show (no hash = main).
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
+  const hash = screen === 'main' ? '' : `/${screen}`
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}${hash ? `#${hash}` : ''}`)
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html'), { hash })
+  }
+
+  return win
+}
+
+/** Focuses the screen's window if it's open, otherwise opens it. */
+function openScreen(screen: Screen): void {
+  const existing = screenWindows.get(screen)
+  if (existing) {
+    if (existing.isMinimized()) existing.restore()
+    existing.focus()
+  } else {
+    createWindow(screen)
   }
 }
 
@@ -59,6 +92,9 @@ function registerWindowControls(): void {
     else win.maximize()
   })
   ipcMain.on('window:close', (event) => senderWindow(event)?.close())
+  ipcMain.on('window:open-screen', (_event, screen: unknown) => {
+    if (isScreen(screen)) openScreen(screen)
+  })
 }
 
 app.whenReady().then(() => {
@@ -73,12 +109,12 @@ app.whenReady().then(() => {
   })
 
   registerWindowControls()
-  createWindow()
+  openScreen('main')
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) openScreen('main')
   })
 })
 

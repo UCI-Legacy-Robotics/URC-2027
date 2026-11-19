@@ -26,7 +26,7 @@ Semantic colors, used sparingly:
 ## Layout
 
 - Map first: the map takes the center; everything else is a side panel or overlay.
-- Top status bar, left icon bar, left side panel, right detail panel and a video area. Side panels collapse.
+- Split across screens, one window each, so they can go on separate monitors: the main screen (top status bar, left panel, map, right panel) and a video screen. See [architecture.md](architecture.md#shell-and-screens).
 - Every screen shows link state and the current mode (Teleop / Autonomous / Idle) prominently.
 
 ## Design tokens

@@ -1,7 +1,13 @@
 import type { ComponentType } from 'react'
 
-/** Where in the shell a widget goes. The layout is fixed for v1. */
-export type ShellArea = 'top-bar' | 'left' | 'center' | 'right' | 'video'
+/**
+ * Where a widget goes. Top-bar widgets appear on every screen; everything else names
+ * its screen and an area of that screen's layout. Layouts are fixed for v1.
+ */
+export type WidgetPlacement =
+  | { area: 'top-bar' }
+  | { screen: 'main'; area: 'left' | 'center' | 'right' }
+  | { screen: 'video'; area: 'grid' }
 
 /** Props every widget component gets: its data, or `undefined` before any arrives. */
 export interface WidgetProps<TData> {
@@ -9,13 +15,11 @@ export interface WidgetProps<TData> {
 }
 
 /** A widget's registration. Each widget folder default-exports one from its `index.ts`. */
-export interface WidgetDefinition<TData = unknown> {
+export type WidgetDefinition<TData = unknown> = WidgetPlacement & {
   /** Unique, kebab-case; matches the folder name. */
   id: string
   /** Human-readable name, e.g. for panel headers. */
   title: string
-  /** Default shell area. */
-  area: ShellArea
   /** Sort order within the area, lowest first. */
   order: number
   component: ComponentType<WidgetProps<TData>>
@@ -37,12 +41,19 @@ const modules = import.meta.glob<{ default: WidgetDefinition }>('../widgets/*/in
   eager: true
 })
 
-/** All registered widgets, sorted by area order. */
+/** All registered widgets, sorted by order. */
 export const widgets: WidgetDefinition[] = Object.values(modules)
   .map((module) => module.default)
   .sort((a, b) => a.order - b.order)
 
-/** The registered widgets for one shell area. */
-export function widgetsIn(area: ShellArea): WidgetDefinition[] {
-  return widgets.filter((widget) => widget.area === area)
+/** A place in the shell that widgets can fill. */
+export type AreaRef = { area: 'top-bar' } | Exclude<WidgetPlacement, { area: 'top-bar' }>
+
+/** The registered widgets for one area. */
+export function widgetsIn(ref: AreaRef): WidgetDefinition[] {
+  return widgets.filter(
+    (widget) =>
+      widget.area === ref.area &&
+      ('screen' in ref ? 'screen' in widget && widget.screen === ref.screen : true)
+  )
 }

@@ -38,12 +38,20 @@ import { LinkStatus } from './LinkStatus'
 export default defineWidget<LinkStatusData>({
   id: 'link-status', // same as the folder name
   title: 'Link status',
-  area: 'top-bar', // 'top-bar' | 'left' | 'center' | 'right' | 'video'
+  area: 'top-bar', // shown on every screen; see "Placement" below
   order: 10, // position within the area, lowest first
   component: LinkStatus,
   useData: () => normal // fixture data for now; reads the store once the backend exists
 })
 ```
+
+**Placement.** A widget names a screen and an area of that screen. The type checker only accepts valid combinations:
+
+| Placement | Where |
+| --------- | ----- |
+| `area: 'top-bar'` | The top bar, on every screen |
+| `screen: 'main', area: 'left' \| 'center' \| 'right'` | Main screen: side panels or the map area |
+| `screen: 'video', area: 'grid'` | Video screen: one tile in the grid |
 
 ### `<WidgetName>.tsx`
 

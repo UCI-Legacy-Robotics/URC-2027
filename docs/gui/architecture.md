@@ -78,17 +78,23 @@ What this means for the UI:
 
 ## Frontend architecture
 
-### Shell
+### Shell and screens
 
-The shell is the fixed frame the widgets sit in:
+The UI doesn't have to fit on one monitor. It's split into **screens**: full-window layouts, each opened in its own window so it can go on its own monitor.
 
-- top status bar
-- left icon bar and left side panel
-- the map in the center
-- right detail panel
-- a video area
+| Screen | Layout | Opened |
+| ------ | ------ | ------ |
+| `main` | Left panel, map in the center, right panel | At startup |
+| `video` | Grid of video tiles | From the **VIDEO** button in the main screen's top bar |
+| `debug` (planned) | Debug tools | Only in **debug mode**, never in mission mode |
 
-Side panels collapse. The layout is fixed for v1; a docking or rearrangeable layout can come later.
+- Every screen has the same top bar: name, top-bar widgets (link status), mode and window buttons. So each window shows link state and mode on its own.
+- The URL hash picks the screen: `#/video` is the video screen, no hash is `main`. In Electron each screen opens as its own window, at most one per screen, and closing the main window closes the others. Browser viewers open screens as new tabs, e.g. `http://<base>/#/video`.
+- Each window will hold its own connection to the backend, which streams the same data to every client. Windows don't pass data to each other.
+- Layouts are fixed for v1. Side panels will collapse; a docking or rearrangeable layout can come later.
+- Later: remember each window's monitor and position, and reopen windows there.
+
+**Debug vs mission mode (planned).** A debug screen for development tools, which can only be opened in debug mode, not in mission mode. Debug/mission mode is a separate setting from control/viewer mode and still needs defining: how it's switched, and what else it gates.
 
 ### Widgets
 
@@ -166,7 +172,7 @@ gui/
         ├── main/             # Electron main process
         ├── preload/          # exposes the control/viewer mode flag
         └── renderer/src/
-            ├── app/          # shell layout, top bar, mode, widget registry (registry.ts)
+            ├── app/          # screens, top bar, mode, widget registry (registry.ts)
             ├── design/       # base components: Panel, SectionHeader, StatusPill, Button, DataField, TopBar
             ├── data/         # Zustand store; later the WebSocket client
             └── widgets/      # one folder per widget, see widgets.md
@@ -191,6 +197,7 @@ To be finalized after going through last year's GUI (URC-2026 repo, `base-statio
 
 - Startup token for Electron: needed, or is "the laptop is the controller" enough?
 - Autonomy onboard limits: maximum time, geofence, or neither?
+- Debug vs mission mode: how it's switched, and what besides the debug screen it gates.
 - Video server: MediaMTX is proposed.
 - Offline map tile source and zoom levels for MDRS.
 - Docking or rearrangeable layout library (not needed for v1).

@@ -6,7 +6,7 @@ import { LinkStatus } from './LinkStatus'
 export default defineWidget<LinkStatusData>({
   id: 'link-status',
   title: 'Link status',
-  area: 'top-bar',
+  area: 'top-bar', // top-bar widgets show on every screen
   order: 10,
   component: LinkStatus,
   // Fixture data until the backend exists; then this reads the store.
