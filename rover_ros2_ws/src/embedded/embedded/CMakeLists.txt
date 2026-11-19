@@ -54,6 +54,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
   install(TARGETS odrive_test DESTINATION lib/${PROJECT_NAME})
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/odrive_mock.cpp")
+  add_executable(odrive_mock src/odrive_mock.cpp)
+  target_link_libraries(odrive_mock PRIVATE CanDevices)
+  install(TARGETS odrive_mock DESTINATION lib/${PROJECT_NAME})
+endif()
+
 # ==============================================================================
 # 4. INSTALLATION & AMENT EXPORTS
 # ==============================================================================

@@ -11,6 +11,8 @@ int main(int argc, char** argv) {
   const std::string interface_name = (argc > 1) ? argv[1] : "vcan0";
 
   auto can_mgr = CanManager::get_instance(interface_name);
+  can_mgr->get_or_register_device<ODriveDevice>("wheel_motor", /*node_id=*/1, /*rx_timeout=*/0ms, /*control_timeout=*/0ms);
+
   auto odrive = can_mgr->get_or_register_device<ODriveDevice>("wheel_motor", /*node_id=*/1, /*rx_timeout=*/0ms, /*control_timeout=*/0ms);
 
   std::cout << "Registered '" << odrive->name() << "' on " << interface_name << "\n";
