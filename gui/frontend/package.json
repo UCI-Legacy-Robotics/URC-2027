@@ -28,7 +28,10 @@
     "@electron-toolkit/utils": "^4.0.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
-    "radix-ui": "^1.8.1"
+    "maplibre-gl": "6.19.0",
+    "radix-ui": "^1.8.1",
+    "uplot": "1.6.32",
+    "zustand": "5.1.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.1",
