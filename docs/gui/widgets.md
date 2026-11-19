@@ -11,6 +11,7 @@ Each widget is one folder under `gui/frontend/src/renderer/src/widgets/`:
 ```
 widgets/
 └── <widget-name>/
+    ├── index.ts                  # registers the widget with the shell
     ├── <WidgetName>.tsx          # the component
     ├── <WidgetName>.stories.tsx  # every state, control + viewer mode
     ├── data.ts                   # type of the data this widget needs
@@ -20,11 +21,33 @@ widgets/
 
 Use kebab-case for the folder (`drive-teleop`) and PascalCase for components (`DriveTeleop.tsx`).
 
+[`widgets/link-status/`](../../gui/frontend/src/renderer/src/widgets/link-status/) is a complete example to copy.
+
 ## Files
+
+### `index.ts`
+
+Registers the widget. The shell picks up every `widgets/*/index.ts` automatically, so adding the folder is all it takes: no shared list to edit.
+
+```ts
+import { defineWidget } from '@renderer/app/registry'
+import type { LinkStatusData } from './data'
+import { normal } from './fixtures'
+import { LinkStatus } from './LinkStatus'
+
+export default defineWidget<LinkStatusData>({
+  id: 'link-status', // same as the folder name
+  title: 'Link status',
+  area: 'top-bar', // 'top-bar' | 'left' | 'center' | 'right' | 'video'
+  order: 10, // position within the area, lowest first
+  component: LinkStatus,
+  useData: () => normal // fixture data for now; reads the store once the backend exists
+})
+```
 
 ### `<WidgetName>.tsx`
 
-The component. It takes its data as props or from the store, and reads the current mode (control or viewer). Build it from the base components in `design/` (Panel, SectionHeader, StatusPill, Button, DataField, TopBar) rather than raw elements.
+The component. It gets its data as a `data` prop (`WidgetProps<YourData>`), which is `undefined` until any data arrives, and reads the mode with `useMode()` from `@renderer/app/mode`. Build it from the base components in `design/` (Panel, SectionHeader, StatusPill, Button, DataField) rather than raw elements.
 
 ### `data.ts`
 
@@ -79,7 +102,7 @@ A short note: what the widget shows, which commands it sends, and its default pa
 
 Before opening a PR for a widget:
 
-- [ ] Folder has all five files
+- [ ] Folder has all six files
 - [ ] `data.ts` fields are commented with units (and rates where known)
 - [ ] Fixtures for normal, warning, link lost and missing data
 - [ ] Each story looks right in both control and viewer mode

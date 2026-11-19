@@ -166,7 +166,7 @@ gui/
         ├── main/             # Electron main process
         ├── preload/          # exposes the control/viewer mode flag
         └── renderer/src/
-            ├── app/          # shell layout, panel areas, widget registry
+            ├── app/          # shell layout, top bar, mode, widget registry (registry.ts)
             ├── design/       # base components: Panel, SectionHeader, StatusPill, Button, DataField, TopBar
             ├── data/         # Zustand store; later the WebSocket client
             └── widgets/      # one folder per widget, see widgets.md
