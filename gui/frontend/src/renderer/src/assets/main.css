@@ -29,7 +29,6 @@
   --color-primary: #f2a93b; /* amber: primary action, selected item */
   --color-caution: #f2a93b; /* amber: caution */
   --color-fault: #e5484d; /* red: stop, cancel, fault */
-  --color-rover: #4cc3d9; /* cyan: our rover and our assets */
 
   /* Fonts: system stacks only, no web fonts (the field has no internet) */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Ubuntu, sans-serif;

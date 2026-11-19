@@ -29,8 +29,7 @@ const colorGroups: { title: string; tokens: { name: string; use: string }[] }[] 
       { name: 'ok', use: 'OK, online, executing' },
       { name: 'primary', use: 'Primary action, selected item' },
       { name: 'caution', use: 'Caution' },
-      { name: 'fault', use: 'Stop, cancel, fault' },
-      { name: 'rover', use: 'Our rover and our assets' }
+      { name: 'fault', use: 'Stop, cancel, fault' }
     ]
   }
 ]
@@ -46,7 +45,7 @@ const textSizeClass: Record<(typeof textSizes)[number], string> = {
 }
 
 const spacingSteps = [1, 2, 3, 4, 6, 8, 12] as const
-const tones: StatusTone[] = ['ok', 'primary', 'caution', 'fault', 'rover', 'neutral']
+const tones: StatusTone[] = ['ok', 'primary', 'caution', 'fault', 'neutral']
 const buttonVariants = ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link'] as const
 
 /** Reads a CSS variable from the theme. main.css is loaded before anything renders. */

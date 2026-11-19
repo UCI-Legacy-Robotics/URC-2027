@@ -2,14 +2,13 @@ import type { ReactNode } from 'react'
 import { cn } from 'cn'
 
 /** Semantic color of a pill. See docs/gui/design.md for what each means. */
-export type StatusTone = 'ok' | 'primary' | 'caution' | 'fault' | 'rover' | 'neutral'
+export type StatusTone = 'ok' | 'primary' | 'caution' | 'fault' | 'neutral'
 
 const toneClass: Record<StatusTone, string> = {
   ok: 'text-ok',
   primary: 'text-primary',
   caution: 'text-caution',
   fault: 'text-fault',
-  rover: 'text-rover',
   neutral: 'text-fg-muted'
 }
 

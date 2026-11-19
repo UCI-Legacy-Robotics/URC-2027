@@ -44,7 +44,7 @@ export function TopBar({ screen }: { screen: ScreenId }): React.JSX.Element {
                 {screenTitles[id].toUpperCase()}
               </Button>
             ))}
-        <StatusPill tone={mode === 'control' ? 'primary' : 'rover'}>{mode}</StatusPill>
+        <StatusPill tone={mode === 'control' ? 'primary' : 'neutral'}>{mode}</StatusPill>
         <WindowControls />
       </div>
     </header>

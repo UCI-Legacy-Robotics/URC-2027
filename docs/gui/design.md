@@ -18,7 +18,6 @@ Semantic colors, used sparingly:
 | Green | OK, online, executing |
 | Amber | Primary action, selected item, caution |
 | Red | Stop, cancel, fault |
-| Cyan | Our rover and our assets |
 
 - One amber primary-action button per panel.
 - Status is shown as small outlined pills, e.g. `ONLINE`, `AUTONOMOUS`.
@@ -50,7 +49,6 @@ The theme is the `@theme` block in `gui/frontend/src/renderer/src/assets/main.cs
 | `primary` | `text-primary`, `bg-primary` | Amber: primary action, selected item |
 | `caution` | `text-caution`, `bg-caution` | Amber: caution |
 | `fault` | `text-fault`, `bg-fault` | Red: stop, cancel, fault |
-| `rover` | `text-rover`, `bg-rover` | Cyan: our rover and our assets |
 
 Fonts are system stacks (`font-sans`, `font-mono`), because the field has no internet for web fonts. Spacing and text sizes use Tailwind's default scales (`p-2`, `gap-3`, `text-xs`).
 
