@@ -1,0 +1,57 @@
+# Git hooks for the whole repo: https://lefthook.dev
+# Installed automatically by `pnpm install` in gui/frontend.
+# Skip in an emergency with `git commit --no-verify` / `git push --no-verify`;
+# CI runs the same checks on every pull request anyway.
+#
+# Each job only runs when the commit or push touches matching files under its `root`,
+# so ROS-only changes don't wait on GUI checks.
+
+pre-commit:
+  parallel: true
+  jobs:
+    # GUI frontend: fast checks on staged files only.
+    - name: gui-eslint
+      root: gui/frontend/
+      glob:
+        - '*.{ts,tsx,js,mjs}'
+        - '**/*.{ts,tsx,js,mjs}'
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
+
+    - name: gui-prettier
+      root: gui/frontend/
+      glob:
+        - '*.{ts,tsx,js,mjs,json,css,md,mdx,yml,yaml}'
+        - '**/*.{ts,tsx,js,mjs,json,css,md,mdx,yml,yaml}'
+      # Formats staged files and re-stages them, so formatting never blocks a commit.
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+    # GUI backend (Python 3.13, uv): add when gui/backend gets real code.
+    # - name: backend-ruff
+    #   root: gui/backend/
+    #   glob: '**/*.py'
+    #   run: uv run ruff check {staged_files} && uv run ruff format --check {staged_files}
+
+pre-push:
+  parallel: true
+  jobs:
+    # GUI frontend: slower whole-project checks, only when the push touches gui/frontend.
+    - name: gui-typecheck
+      root: gui/frontend/
+      glob:
+        - '*'
+        - '**/*'
+      run: pnpm typecheck
+
+    - name: gui-lint
+      root: gui/frontend/
+      glob:
+        - '*'
+        - '**/*'
+      run: pnpm lint
+
+    # GUI backend: add when gui/backend gets real code.
+    # - name: backend-mypy
+    #   root: gui/backend/
+    #   glob: '**/*.py'
+    #   run: uv run mypy .
