@@ -3,7 +3,7 @@
 ```bash
 pnpm install     # also installs git hooks
 pnpm dev         # Electron app, control mode
-pnpm dev:web     # browser, viewer mode
+pnpm dev:web     # browser, viewer mode (localhost:5174)
 pnpm storybook   # build widgets against fake data
 ```
 

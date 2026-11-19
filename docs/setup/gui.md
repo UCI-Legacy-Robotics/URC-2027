@@ -27,7 +27,7 @@ From `gui/frontend`:
 | Command | What it does |
 | ------- | ------------ |
 | `pnpm dev` | Opens the Electron app in control mode |
-| `pnpm dev:web` | Serves the UI to a normal browser in viewer mode |
+| `pnpm dev:web` | Serves only the UI at http://localhost:5174, for a normal browser in viewer mode. Also reachable from other devices on your network |
 | `pnpm storybook` | Opens Storybook to build widgets against fake data |
 | `pnpm build` | Production build. Static renderer output: _TBD_ |
 
