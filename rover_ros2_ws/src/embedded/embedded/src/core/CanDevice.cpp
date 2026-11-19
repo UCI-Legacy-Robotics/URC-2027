@@ -155,20 +155,8 @@ std::shared_ptr<ServiceChannel> CanDevice::create_service(ServiceChannel::AckMat
   return service;
 }
 
-bool CanDevice::send_immediate(const CanFrame& frame) {
-  return schedule_message(std::make_shared<ImmediateMessage>(frame));
-}
-
-bool CanDevice::send_delayed(const CanFrame& frame, std::chrono::microseconds delay) {
-  return schedule_message(std::make_shared<ImmediateMessage>(frame, delay));
-}
-
-bool CanDevice::schedule_message(std::shared_ptr<TxMessage> msg) {
-  if (!manager_ || !msg) {
-    return false;
-  }
-  manager_->schedule(std::move(msg));
-  return true;
+ImmediateCommand CanDevice::create_immediate(ImmediateCommand::FrameBuilder builder) {
+  return ImmediateCommand(*this, std::move(builder));
 }
 
 void CanDevice::mark_control_updated() noexcept {

@@ -71,8 +71,12 @@ ODriveDevice::ODriveDevice(
                f.data[4] ==
                    static_cast<uint8_t>(expected_axis_state_.load(std::memory_order_acquire));
       })),
-      set_origin_cmd_(*this, CanFrame::make_can_simple(node_id, kCmdSetAbsolutePos, 4)),
-      clear_errors_cmd_(*this, CanFrame::make_can_simple(node_id, kCmdClearErrors, 0)) {}
+      set_origin_cmd_(create_immediate([this]() -> std::optional<CanFrame> {
+        return CanFrame::make_can_simple(node_id_, kCmdSetAbsolutePos, 4);
+      })),
+      clear_errors_cmd_(create_immediate([this]() -> std::optional<CanFrame> {
+        return CanFrame::make_can_simple(node_id_, kCmdClearErrors, 0);
+      })) {}
 
 void ODriveDevice::set_pos(float pos_rev) noexcept {
   target_pos_.store(pos_rev, std::memory_order_release);

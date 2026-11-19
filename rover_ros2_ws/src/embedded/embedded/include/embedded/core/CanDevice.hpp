@@ -41,10 +41,6 @@ public:
   DeviceState state() const noexcept { return state_.load(std::memory_order_acquire); }
   bool is_healthy() const noexcept { return state() != DeviceState::ERROR_HARD_BLOCK; }
 
-  bool send_immediate(const CanFrame& frame);
-  bool send_delayed(const CanFrame& frame, std::chrono::microseconds delay);
-  bool schedule_message(std::shared_ptr<TxMessage> msg);
-
 protected:
   // --- Device Subclass Overrides ---
   virtual void on_rx(const CanFrame& frame) = 0;
@@ -64,6 +60,9 @@ protected:
       PeriodicMessage::FrameBuilder normal_builder,
       PeriodicMessage::FrameBuilder safe_builder = nullptr);
 
+  ImmediateCommand create_immediate(ImmediateCommand::FrameBuilder builder);
+
+  // Create persistent message helpers during derived-device construction.
   std::shared_ptr<ServiceChannel> create_service(ServiceChannel::AckMatcher matcher);
 
   void mark_control_updated() noexcept;
@@ -71,6 +70,7 @@ protected:
 private:
   friend class CanManager;
   friend class ServiceChannel;
+  friend class ImmediateCommand;
 
   struct PendingPeriodicSpec {
     std::shared_ptr<PeriodicMessage> msg;
