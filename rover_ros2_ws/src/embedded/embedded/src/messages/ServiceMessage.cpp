@@ -2,8 +2,6 @@
 #include "embedded/core/CanDevice.hpp"
 #include "embedded/core/CanManager.hpp"
 
-#include <algorithm>
-
 ServiceMessage::ServiceMessage(
     std::weak_ptr<ServiceChannel> channel,
     uint32_t generation,
@@ -38,17 +36,7 @@ TxResult ServiceMessage::run(Timestamp now) {
 }
 
 ServiceChannel::ServiceChannel(CanDevice& owner, AckMatcher matcher)
-    : owner_(owner), matcher_(std::move(matcher)) {
-  std::lock_guard<std::mutex> lock(owner_.services_mutex_);
-  owner_.services_.push_back(this);
-}
-
-ServiceChannel::~ServiceChannel() {
-  cancel();
-  std::lock_guard<std::mutex> lock(owner_.services_mutex_);
-  auto& vec = owner_.services_;
-  vec.erase(std::remove(vec.begin(), vec.end(), this), vec.end());
-}
+    : owner_(owner), matcher_(std::move(matcher)) {}
 
 bool ServiceChannel::send(
     const CanFrame& req,

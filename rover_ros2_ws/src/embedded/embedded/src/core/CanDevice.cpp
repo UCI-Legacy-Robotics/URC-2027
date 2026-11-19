@@ -1,6 +1,8 @@
 #include "embedded/core/CanDevice.hpp"
 #include "embedded/core/CanManager.hpp"
 
+#include <stdexcept>
+
 namespace {
 constexpr uint8_t kRecoveryFramesRequired = 3;
 }
@@ -104,11 +106,8 @@ CanDevice::~CanDevice() {
       msg->cancel();
     }
   }
-  std::lock_guard<std::mutex> lock(services_mutex_);
-  for (ServiceChannel* svc : services_) {
-    if (svc) {
-      svc->cancel();
-    }
+  for (const auto& svc : services_) {
+    svc->cancel();
   }
 }
 
@@ -151,7 +150,9 @@ std::vector<std::shared_ptr<TxMessage>> CanDevice::bind_and_collect_periodic_mes
 }
 
 std::shared_ptr<ServiceChannel> CanDevice::create_service(ServiceChannel::AckMatcher matcher) {
-  return std::make_shared<ServiceChannel>(*this, std::move(matcher));
+  auto service = std::shared_ptr<ServiceChannel>(new ServiceChannel(*this, std::move(matcher)));
+  services_.push_back(service);
+  return service;
 }
 
 bool CanDevice::send_immediate(const CanFrame& frame) {
@@ -194,12 +195,9 @@ void CanDevice::handle_rx(const CanFrame& frame) {
     }
   }
 
-  {
-    std::lock_guard<std::mutex> lock(services_mutex_);
-    for (ServiceChannel* svc : services_) {
-      if (svc && svc->try_match_ack(frame)) {
-        break;
-      }
+  for (const auto& svc : services_) {
+    if (svc->try_match_ack(frame)) {
+      break;
     }
   }
 

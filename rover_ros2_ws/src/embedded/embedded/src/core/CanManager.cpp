@@ -340,13 +340,8 @@ bool CanManager::deregister_device(
         msg->cancel();
       }
     }
-    {
-      std::lock_guard<std::mutex> lock(removed->services_mutex_);
-      for (ServiceChannel* svc : removed->services_) {
-        if (svc) {
-          svc->cancel();
-        }
-      }
+    for (const auto& svc : removed->services_) {
+      svc->cancel();
     }
   }
 

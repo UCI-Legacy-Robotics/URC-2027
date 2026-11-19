@@ -10,7 +10,6 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -105,7 +104,5 @@ private:
   std::atomic<bool> registered_{false};
   std::vector<PendingPeriodicSpec> periodic_specs_;
   std::vector<std::shared_ptr<PeriodicMessage>> periodic_messages_;
-
-  std::mutex services_mutex_;
-  std::vector<ServiceChannel*> services_;
+  std::vector<std::shared_ptr<ServiceChannel>> services_;
 };
