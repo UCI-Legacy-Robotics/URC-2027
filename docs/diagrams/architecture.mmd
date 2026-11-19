@@ -32,11 +32,13 @@ flowchart LR
         R5G(["5 GHz<br/>video streams + media files"])
     end
 
-    subgraph BASE["Base station (no ROS)"]
+    subgraph BASE["Base station laptop (no ROS)"]
         BACK["gui/backend<br/>(Python)"]
         BMTX["MediaMTX (base)"]
-        FRONT["gui/frontend<br/>(one window per monitor)"]
+        APP["gui/frontend in Electron<br/>(control client)"]
     end
+
+    VIEW["gui/frontend in a browser<br/>(read-only viewers on base Wi-Fi)"]
 
     %% Inside the camera process: no serialization
     ZED -->|"images (in-process)"| SM
@@ -87,7 +89,9 @@ flowchart LR
     MEDIA -->|"HTTP download"| R5G
     R5G --> BACK
 
-    %% Base station to browser
-    BACK <-->|"WebSocket"| FRONT
-    BACK -->|"panoramas + photos (HTTP)"| FRONT
-    BMTX -->|"WebRTC"| FRONT
+    %% Base station to the UI
+    BACK <-->|"control WebSocket<br/>(localhost only)"| APP
+    BACK -->|"panoramas + photos (HTTP)"| APP
+    BMTX -->|"WebRTC"| APP
+    BACK -->|"viewer WebSocket, UI files,<br/>panoramas + photos (2.4 GHz Wi-Fi)"| VIEW
+    BMTX -->|"WebRTC"| VIEW

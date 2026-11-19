@@ -20,12 +20,12 @@ rover_ros2_ws/
     └── rover_telemetry/  # package: data to base station, controls from base station
 gui/                      # base station GUI (no ROS)
 ├── backend/              # MAVLink <-> WebSocket server: owns the radio, logs telemetry
-└── frontend/             # Vite + React + TypeScript dashboard
+└── frontend/             # Electron + React + TypeScript app (control) / browser viewer
 mavlink/                  # MAVLink dialect XML shared by the rover and gui/backend
 docs/                     # subsystem docs
 ```
 
-The rover runs ROS 2. The base station does not: `gui/backend` decodes MAVLink from the radio and streams it to the frontend over WebSockets. Both sides generate their MAVLink code from the dialect in `mavlink/`, so message changes go there first.
+The rover runs ROS 2. The base station does not: `gui/backend` decodes MAVLink from the radio and streams it over WebSockets to the frontend, which runs as an Electron app (the only control client) on the base laptop and as a read-only viewer in browsers on the base Wi-Fi. Both sides generate their MAVLink code from the dialect in `mavlink/`, so message changes go there first.
 
 Each folder under `src/` groups related ROS 2 packages. colcon finds packages recursively, so put packages directly inside the matching folder, e.g. `src/drive/drive_teleop/package.xml`. Shared messages, services, and actions go in `src/interfaces/`.
 
@@ -58,7 +58,7 @@ If a build works for you but not for others, check that every dependency is list
 
 ## Base station GUI
 
-The base station GUI lives in `gui/` and doesn't need ROS. See [gui/README.md](gui/README.md) for setup and the tech stack, and [mavlink/README.md](mavlink/README.md) for the shared MAVLink dialect.
+The base station GUI lives in `gui/` and doesn't need ROS, so GUI work runs natively on macOS, Windows or Linux (WSL is only needed for the ROS workspace). See [docs/gui/](docs/gui/architecture.md) for the architecture and how to write widgets, [gui/README.md](gui/README.md) for setup, and [mavlink/README.md](mavlink/README.md) for the shared MAVLink dialect.
 
 ## Contributing
 

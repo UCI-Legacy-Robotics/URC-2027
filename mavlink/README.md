@@ -47,7 +47,7 @@ Never change the fields or the order of a message that's already in use. Add a n
 Base station (generated code is committed, in `gui/backend/app/generated/`):
 
 ```bash
-cd gui && make mavlink     # or: gui/backend/scripts/gen_mavlink.sh
+gui/backend/scripts/gen_mavlink.sh
 ```
 
 The rover's `rover_telemetry` package will generate from the same `rover.xml` when it's written.

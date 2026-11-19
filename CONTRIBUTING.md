@@ -84,7 +84,7 @@ colcon test-result --verbose
 
 Make sure it builds, tests pass, and you've run it in sim or on hardware.
 
-For `gui/` changes, run the checks in [gui/README.md](gui/README.md#checks) instead.
+For `gui/frontend` changes, run the checks in [gui/frontend/README.md](gui/frontend/README.md#checks) instead. For `gui/backend`, run the checks in [gui/README.md](gui/README.md#backend-setup).
 
 ## Docs
 

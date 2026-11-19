@@ -21,13 +21,16 @@ flowchart LR
         R5G(["5 GHz<br/>media files"])
     end
 
-    subgraph BASE["Base station (no ROS)"]
+    subgraph BASE["Base station laptop (no ROS)"]
         BACK["gui/backend<br/>(Python)"]
-        FRONT["gui/frontend"]
+        APP["gui/frontend in Electron<br/>(control client)"]
     end
 
+    VIEW["gui/frontend in a browser<br/>(read-only viewers)"]
+
     %% Control and status
-    FRONT <-->|"WebSocket"| BACK
+    APP <-->|"control WebSocket<br/>(start / cancel, status)"| BACK
+    BACK -->|"viewer WebSocket<br/>(status, results)"| VIEW
     BACK <--> R900
     R900 <--> TELEM
     TELEM -->|"action goal: start / cancel"| SEQ
@@ -52,4 +55,5 @@ flowchart LR
     %% File delivery
     MEDIA -->|"HTTP download"| R5G
     R5G --> BACK
-    BACK -->|"panoramas + photos (HTTP)"| FRONT
+    BACK -->|"panoramas + photos (HTTP)"| APP
+    BACK -->|"panoramas + photos (HTTP)"| VIEW

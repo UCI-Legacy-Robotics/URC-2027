@@ -15,11 +15,13 @@ flowchart LR
         R5G(["5 GHz<br/>video streams"])
     end
 
-    subgraph BASE["Base station (no ROS)"]
+    subgraph BASE["Base station laptop (no ROS)"]
         BACK["gui/backend<br/>(Python)"]
         BMTX["MediaMTX (base)"]
-        FRONT["gui/frontend<br/>(one window per monitor)"]
+        APP["gui/frontend in Electron<br/>(control client)"]
     end
+
+    VIEW["gui/frontend in a browser<br/>(read-only viewers)"]
 
     %% Frames into the stream manager (no serialization)
     ZED -->|"images (in-process)"| SM
@@ -30,10 +32,11 @@ flowchart LR
     SM -->|"H.264"| RMTX
     RMTX -->|"on-demand pull<br/>(only while watched)"| R5G
     R5G --> BMTX
-    BMTX -->|"WebRTC"| FRONT
+    BMTX -->|"WebRTC"| APP
+    BMTX -->|"WebRTC (2.4 GHz Wi-Fi)"| VIEW
 
-    %% Control path
-    FRONT -->|"bitrate / resolution"| BACK
+    %% Control path: only the Electron app sends commands
+    APP -->|"bitrate / resolution"| BACK
     BACK <--> R900
     R900 <--> TELEM
     TELEM -->|"bitrate / resolution"| SM

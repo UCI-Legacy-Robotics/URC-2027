@@ -15,13 +15,15 @@ flowchart LR
         R5G(["5 GHz<br/>panorama file"])
     end
 
-    subgraph BASE["Base station (no ROS)"]
+    subgraph BASE["Base station laptop (no ROS)"]
         BACK["gui/backend<br/>(Python)"]
-        FRONT["gui/frontend"]
+        APP["gui/frontend in Electron<br/>(control client)"]
     end
 
+    VIEW["gui/frontend in a browser<br/>(read-only viewers)"]
+
     %% Start
-    FRONT -->|"start pano"| BACK
+    APP -->|"start pano"| BACK
     BACK <--> R900
     R900 <--> TELEM
     TELEM -->|"action goal"| SEQ
@@ -42,4 +44,5 @@ flowchart LR
     SEQ -->|"feedback: captured i/8,<br/>result: pano ready"| TELEM
     MEDIA -->|"8. HTTP download"| R5G
     R5G --> BACK
-    BACK -->|"show panorama"| FRONT
+    BACK -->|"show panorama"| APP
+    BACK -->|"show panorama"| VIEW
