@@ -1,0 +1,114 @@
+# System overview
+
+How the rover and the base station fit together.
+
+- **The rover runs ROS 2** (Jazzy). `rover_telemetry` bridges ROS and MAVLink.
+- **The base station doesn't run ROS.** `gui/backend` decodes MAVLink from the radio and streams it to the GUI, which runs as an Electron app (the only control client) on the base laptop and as a read-only viewer in browsers on the base Wi-Fi. See [GUI architecture](../gui/architecture.md).
+- **Two radio links:**
+  - **900 MHz** carries MAVLink: all telemetry and every command. See [MAVLink dialect](mavlink.md).
+  - **5 GHz** carries video streams and media files (panoramas, science photos). See [Video](video.md).
+
+```mermaid
+flowchart LR
+    subgraph ROVER["Rover (ROS 2)"]
+        subgraph CAMPROC["Camera process (component_container_mt, intra-process)"]
+            ZED["ZED 2i driver<br/>(zed-ros2-wrapper)"]
+            ARMCAM["arm camera drivers<br/>2× OV9281 (arm mission)"]
+            SCICAM["science camera node<br/>A219 (science mission)"]
+            SM["stream manager<br/>(GStreamer, H.264)"]
+        end
+
+        subgraph SCI["Science subsystem (science mission)"]
+            SEQ["science sequencer<br/>state machine, ROS actions:<br/>bradford / npk / pano"]
+            subgraph EMB["Embedded nodes"]
+                DRILL["drill"]
+                MIXER["mixer"]
+                SPEC["spectrophotometer"]
+                NPK["NPK sensor"]
+            end
+            STITCH["cv stitcher"]
+            ANNOT["pano annotator<br/>cardinal direction + scale"]
+        end
+
+        CAP["camera capture node<br/>image + heading"]
+        DRIVE["drive / Nav2"]
+        CV["ArUco + object detection"]
+        MEDIA["media file server<br/>(panoramas, science photos)"]
+        RMTX["MediaMTX (rover)"]
+        TELEM["rover_telemetry<br/>(ROS ↔ MAVLink)"]
+    end
+
+    subgraph LINKS["Radio links"]
+        R900(["900 MHz<br/>MAVLink: telemetry + all commands"])
+        R5G(["5 GHz<br/>video streams + media files"])
+    end
+
+    subgraph BASE["Base station laptop (no ROS)"]
+        BACK["gui/backend<br/>(Python)"]
+        BMTX["MediaMTX (base)"]
+        APP["gui/frontend in Electron<br/>(control client)"]
+    end
+
+    VIEW["gui/frontend in a browser<br/>(read-only viewers on base Wi-Fi)"]
+
+    %% Inside the camera process: no serialization
+    ZED -->|"images (in-process)"| SM
+    ARMCAM -->|"images (in-process)"| SM
+    SCICAM -->|"live video frames"| SM
+
+    %% Camera data to other processes
+    ZED -->|"image + mag topics"| CAP
+    ZED -->|"depth / point cloud"| DRIVE
+    ARMCAM -->|"image topics"| CV
+
+    %% Science sequencer control and status
+    TELEM -->|"action goal: start / cancel"| SEQ
+    SEQ -->|"action feedback + result<br/>(status, absorbance, NPK, ready flags)"| TELEM
+
+    %% Bradford sequence
+    SEQ -->|"1. lower / raise"| DRILL
+    SEQ -->|"2. run"| MIXER
+    SEQ -->|"3. measure"| SPEC
+    SPEC -->|"absorbance"| SEQ
+    SEQ -->|"photo of drill site"| SCICAM
+    SCICAM -->|"full-res photo"| MEDIA
+
+    %% NPK sequence
+    SEQ -->|"lower + measure"| NPK
+    NPK -->|"N, P, K readings"| SEQ
+
+    %% Pano sequence
+    SEQ -->|"rotate 45° (×8)"| DRIVE
+    SEQ -->|"capture()"| CAP
+    CAP -->|"CapturedFrame"| SEQ
+    SEQ -->|"stitch(frames)"| STITCH
+    STITCH -->|"panorama"| ANNOT
+    ANNOT -->|"annotated panorama"| SEQ
+    SEQ -->|"save file"| MEDIA
+
+    %% Video pipeline
+    SM --> RMTX
+
+    %% 900 MHz: telemetry and commands
+    TELEM <--> R900
+    R900 <--> BACK
+    TELEM -->|"bitrate / resolution"| SM
+
+    %% 5 GHz: video and media
+    RMTX -->|"on-demand pull"| R5G
+    R5G --> BMTX
+    MEDIA -->|"HTTP download"| R5G
+    R5G --> BACK
+
+    %% Base station to the UI
+    BACK <-->|"control WebSocket<br/>(localhost only)"| APP
+    BACK -->|"panoramas + photos (HTTP)"| APP
+    BMTX -->|"WebRTC"| APP
+    BACK -->|"viewer WebSocket, UI files,<br/>panoramas + photos (2.4 GHz Wi-Fi)"| VIEW
+    BMTX -->|"WebRTC"| VIEW
+```
+
+Subsystem views:
+
+- [Video](video.md): cameras to the GUI over 5 GHz
+- [Science](science.md): science sequences and panoramas
