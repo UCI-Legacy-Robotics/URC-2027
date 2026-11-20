@@ -24,9 +24,6 @@ public:
   CanManager(const CanManager&) = delete;
   CanManager& operator=(const CanManager&) = delete;
 
-  bool start();
-  void stop();
-
   bool deregister_device(const std::string& name, const CanDevice* expected_device = nullptr);
   std::shared_ptr<CanDevice> get_device(const std::string& name) const;
   std::shared_ptr<CanDevice> get_device(uint32_t id) const;
@@ -53,6 +50,8 @@ private:
 
   bool open_socket();
   void close_socket();
+  bool start();
+  void stop();
   bool register_device(std::shared_ptr<CanDevice> device);
   void thread_finished();
   void rebuild_rx_routes_and_filters();
