@@ -83,13 +83,14 @@ std::optional<CanFrame> YellowJacketDevice::build_normal_setpoint_frame() const 
   switch (control_mode_.load(std::memory_order_acquire)) {
     case ControlMode::POSITION: {
       CanFrame f = CanFrame::make_can_simple(node_id_, kCmdSetInputPos, 8);
-      float pos = target_pos_.load(std::memory_order_acquire);
+      // float pos = target_pos_.load(std::memory_order_acquire);
       // std::memcpy(&f.data[0], &target_pos_.load(std::memory_order_acquire), sizeof(int32_t));
       return f;
     }
 
     case ControlMode::VELOCITY: {
       CanFrame f = CanFrame::make_can_simple(node_id_, kCmdSetInputVelandDuty, 8);
+      // float vel = target_vel_.load(std::memory_order_acquire);
       // std::memcpy(&f.data[0], &target_vel_.load(std::memory_order_acquire), sizeof(int32_t));
       return f;
     }
@@ -100,6 +101,8 @@ std::optional<CanFrame> YellowJacketDevice::build_normal_setpoint_frame() const 
       std::memcpy(&f.data[0], &duty, sizeof(int32_t));
       return f;
     }
+
+    default: {}
   }
   return std::nullopt;
 }

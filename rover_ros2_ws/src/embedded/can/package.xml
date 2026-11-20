@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>embedded_pkg</name>
+  <name>embedded_can</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Complete unified CAN interface with device classes</description>
   <maintainer email="dhrishreddyk@gmail.com">dhrish</maintainer>
   <license>TODO: License declaration</license>
 
