@@ -11,7 +11,7 @@ NUM_FEATURES = NUM_KP * 3  # x, y, confidence <--per keypoint
 L_SHOULDER, R_SHOULDER = 5, 6
 KP_CONF_MIN = 0.3
 L_HIP, R_HIP = 11, 12
-TORSE_PER_SHOULDER = 1.6 # typical, use if hips are not visible
+TORSO_PER_SHOULDER = 1.6 # typical, use if hips are not visible
 CLIP = 5.0
 
 def normalize_frame (x, y, conf, detected=True):

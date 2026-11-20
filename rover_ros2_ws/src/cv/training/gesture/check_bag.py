@@ -1,8 +1,4 @@
-"""Quick sanity check for gesture bags.
-
-Usage (ROS + workspace sourced):
-    python3 check_bag.py <bag_dir> [<bag_dir> ...] [--chunk 5]
-"""
+#just a script to check that a bag is usable after recording
 import argparse
 
 import numpy as np

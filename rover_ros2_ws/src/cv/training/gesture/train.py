@@ -1,10 +1,3 @@
-"""dataset.npz -> trained 1D temporal CNN -> gesture_cnn.onnx
-
-Run in the PyTorch venv (ROS not needed):
-    python train.py
-    python train.py --val-person alex --epochs 80
-Outputs go to <data>/runs/<timestamp>/.
-"""
 import argparse
 import os
 from datetime import datetime
@@ -26,9 +19,8 @@ for a, b in LR_PAIRS:
     MIRROR[a], MIRROR[b] = b, a
 
 
-# ---------------------------------------------------------------- model
+#model - 1d tempo cnn, convolutions slide along time, 51 feature channels
 class GestureCNN(nn.Module):
-    """1D temporal CNN: convolutions slide along time; the 51 features are channels."""
 
     def __init__(self, n_features, n_classes, width=64, dropout=0.3):
         super().__init__()
@@ -48,9 +40,8 @@ class GestureCNN(nn.Module):
         return self.head(self.features(x.transpose(1, 2)))   # -> logits [batch, classes]
 
 
-# ---------------------------------------------------------------- augmentation
+#augmentation , random label preserving changes to a batch. for training only
 def augment(xb):
-    """Random, label-preserving changes to a batch [B, T, 51]. Training only."""
     B, T, _ = xb.shape
     k = xb.reshape(B, T, NUM_KP, 3).clone()
 
@@ -59,8 +50,8 @@ def augment(xb):
     k[flip] = k[flip][:, :, MIRROR]
     k[flip, :, :, 0] *= -1
 
-    # small rotation and scale (camera tilt, body proportions)
-    ang = (torch.rand(B) - 0.5) * np.deg2rad(20)          # +-10 deg
+    # small rotation and scale, camera tilt, body proportions
+    ang = (torch.rand(B) - 0.5) * np.deg2rad(20)  # +-10 deg
     scale = 0.9 + 0.2 * torch.rand(B)
     c, s = (torch.cos(ang) * scale)[:, None, None], (torch.sin(ang) * scale)[:, None, None]
     x, y = k[..., 0].clone(), k[..., 1].clone()
@@ -89,9 +80,8 @@ def augment(xb):
     return out.transpose(1, 2).contiguous()
 
 
-# ---------------------------------------------------------------- data split
+# data split, validation must be data the model never saw, like another random person
 def split(person, bag, y, val_person):
-    """Validation must be data the model never saw: a whole person, or whole bags."""
     people = np.unique(person)
     if val_person is None and len(people) > 1:
         val_person = str(people[-1])
@@ -101,7 +91,7 @@ def split(person, bag, y, val_person):
         val = person == val_person
         return ~val, val, f'held-out person "{val_person}"'
 
-    # one person only (pilot): hold out the last bag of each class that has 2+ bags
+    # one person only hold out last bag of each class that has 2+ bags
     val = np.zeros(len(y), bool)
     held = []
     for c in np.unique(y):
@@ -114,7 +104,7 @@ def split(person, bag, y, val_person):
     return ~val, val, 'held-out bags: ' + ', '.join(held)
 
 
-# ---------------------------------------------------------------- evaluation
+# eval
 @torch.no_grad()
 def evaluate(model, X, y, loss_fn):
     model.eval()
@@ -135,7 +125,7 @@ def confusion(y, pred, classes):
     return lines
 
 
-# ---------------------------------------------------------------- main
+# main
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--data', default=DEFAULT_DATA)
@@ -203,7 +193,7 @@ def main():
             log(f'no improvement for {args.patience} epochs, stopping')
             break
 
-    # ---- final report on the best epoch
+    # final report on the best epoch
     model.load_state_dict(best_state)
     model.eval()
     _, acc, pred = evaluate(model, X[va], y[va], loss_fn)
@@ -215,7 +205,7 @@ def main():
         m = bag[va] == b
         log(f'  {b:<34} {(pred[m] == y[va][m]).mean():6.1%}  ({m.sum()} windows)')
 
-    # ---- save + export
+    # save and export
     os.makedirs(run_dir)
     torch.save(best_state, os.path.join(run_dir, 'best.pt'))
     with open(os.path.join(run_dir, 'classes.txt'), 'w') as f:
@@ -225,7 +215,7 @@ def main():
     dummy = torch.zeros(1, X.shape[1], X.shape[2])        # node runs one window at a time
     torch.onnx.export(model, (dummy,), onnx_path,
                       input_names=['keypoints'], output_names=['logits'],
-                      external_data=False)                 # one self-contained .onnx file
+                      external_data=False)                 # one self-contained .onnx
 
     import onnxruntime as ort                              # verify export matches PyTorch
     sess = ort.InferenceSession(onnx_path, providers=['CPUExecutionProvider'])

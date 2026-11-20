@@ -1,13 +1,3 @@
-"""Bags -> dataset.npz for gesture training.
-
-Reads every bag in <data>/bags, named <class>_<person>_<anything>, normalizes
-each frame with cv_gesture.preprocess, and slides a fixed-length window over
-each bag. Prints a per-bag quality report.
-
-Run with ROS + the workspace sourced (needs rosbag2_py, cv_interfaces, cv_gesture):
-    python3 extract.py
-    python3 extract.py --data ~/Documents/training/gesture/data --trim 2 --stride 0.25
-"""
 import argparse
 import os
 from collections import defaultdict
@@ -18,15 +8,39 @@ from rclpy.serialization import deserialize_message
 
 from cv_interfaces.msg import Keypoints
 from cv_gesture.preprocess import (
-    WINDOW_SEC, normalize_frame, resample_window, stamp_to_sec,
+    WINDOW_SEC, 
+    normalize_frame, 
+    resample_window, 
+    stamp_to_sec,
+    KP_CONF_MIN, 
 )
 
 TOPIC = '/cv/pose/keypoints'
 DEFAULT_DATA = '~/Documents/training/gesture/data'
 
+ARMS = [(5, 7, 9), (6, 8, 10)]
+STRAIGHT_MIN = 0.8
+MAX_TILT = 0.7
 
+def arm_extended(frames):
+    out = np.zeros(len(frames), bool)
+    for s, e, w in ARMS:
+        S, E, W = frames[:, s, :2], frames[:, e, :2], frames[:, w, :2]
+        visible = (frames[:, [s, e, w], 2] >= KP_CONF_MIN).all(axis=1)
+        reach = np.linalg.norm(W - S, axis=1) #shoulder -> wrist
+        length = np.linalg.norm(E - S, axis=1) + np.linalg.norm(W - E, axis=1)
+        straight = reach / np.maximum(length, 1e-6) #1.0 when fully straight
+        tilt = (W[:, 1] - S[:, 1]) / np.maximum(reach, 1e-6) # 0 horizontal, 1 down
+
+        out |= visible & (straight >= STRAIGHT_MIN) & (np.abs(tilt) < MAX_TILT)
+    return out
+
+
+# gesture classes -> rule, null classes keep every window
+ACTIVE_RULES = {'fetch': arm_extended}
+
+#return capture times [N] and normalized frames [N, 17, 3] for a bag
 def read_bag(path):
-    """Return capture times [N] and normalized frames [N, 17, 3] for one bag."""
     reader = rosbag2_py.SequentialReader()
     reader.open(rosbag2_py.StorageOptions(uri=path, storage_id='mcap'),
                 rosbag2_py.ConverterOptions('', ''))
@@ -41,16 +55,14 @@ def read_bag(path):
     order = np.argsort(times)
     return np.asarray(times)[order], np.asarray(frames)[order]
 
-
 def parse_name(bag_name):
     parts = bag_name.split('_')
     if len(parts) < 2:
         raise ValueError(f'bag name "{bag_name}" must be <class>_<person>_...')
     return parts[0].lower(), parts[1].lower()
 
-
-def extract_bag(times, frames, trim, stride, min_valid):
-    """Slide a WINDOW_SEC window over one bag. Returns windows, end times, stats, warnings."""
+#slide a window over a bag, return windows, end times, stats, warnings
+def extract_bag(times, frames, trim, stride, min_valid, active=None, min_active=0.5):
     valid = frames.any(axis=(1, 2))          # frame usable = person + shoulders found
     first, last = times[0] + trim, times[-1] - trim
     windows, ends = [], []
@@ -58,6 +70,8 @@ def extract_bag(times, frames, trim, stride, min_valid):
         in_win = (times > end - WINDOW_SEC) & (times <= end)
         if not in_win.any() or valid[in_win].mean() < min_valid:
             continue                          # person missing in too much of this window
+        if active is not None and active[in_win].mean() < min_active:
+            continue                          # gesture not happening (pause between reps)
         w = resample_window(times, frames, end_time=end)
         if w is not None:
             windows.append(w)
@@ -77,7 +91,8 @@ def extract_bag(times, frames, trim, stride, min_valid):
         warnings.append(f'{(gaps > 0.5).sum()} stalls')
     if not windows:
         warnings.append('NO usable windows')
-    stats = dict(dur=dur, fps=fps, valid=valid.mean())
+    stats = dict(dur=dur, fps=fps, valid=valid.mean(),
+                 active=active.mean() if active is not None else None)
     return windows, ends, stats, warnings
 
 
@@ -88,6 +103,8 @@ def main():
     ap.add_argument('--stride', type=float, default=0.25, help='seconds between windows')
     ap.add_argument('--min-valid', type=float, default=0.8,
                     help='min fraction of frames with a person in a window')
+    ap.add_argument('--min-active', type=float, default=0.5,
+                    help='gesture classes: min fraction of frames where the gesture is visible')
     args = ap.parse_args()
 
     data_dir = os.path.expanduser(args.data)
@@ -100,17 +117,20 @@ def main():
     X, labels, persons, bags, ends = [], [], [], [], []
     per_class = defaultdict(lambda: {'bags': 0, 'windows': 0, 'people': set()})
 
-    print(f'\n{"bag":<32} {"dur":>6} {"fps":>5} {"person":>7} {"windows":>8}  status')
+    print(f'\n{"bag":<32} {"dur":>6} {"fps":>5} {"person":>7} {"active":>7} {"windows":>8}  status')
     for name in bag_names:
         label, person = parse_name(name)
         times, frames = read_bag(os.path.join(bag_dir, name))
         if len(times) < 2:
             print(f'{name:<32} ⚠ EMPTY (0 messages): were pose_node/webcam_node running and visible?')
             continue
+        rule = ACTIVE_RULES.get(label)
         windows, w_ends, s, warns = extract_bag(
-            times, frames, args.trim, args.stride, args.min_valid)
+            times, frames, args.trim, args.stride, args.min_valid,
+            active=rule(frames) if rule else None, min_active=args.min_active)
         status = '⚠ ' + ', '.join(warns) if warns else 'OK'
-        print(f'{name:<32} {s["dur"]:5.1f}s {s["fps"]:5.1f} {s["valid"]:6.0%} '
+        act = f'{s["active"]:6.0%}' if s['active'] is not None else '     -'
+        print(f'{name:<32} {s["dur"]:5.1f}s {s["fps"]:5.1f} {s["valid"]:6.0%} {act} '
               f'{len(windows):8d}  {status}')
 
         X += windows

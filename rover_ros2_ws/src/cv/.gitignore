@@ -10,6 +10,8 @@ __pycache__/
 
 # Machine learning weights
 *.onnx
+!cv_pose/models/*.onnx
+!cv_gesture/models/*.onnx
 *.pt
 *.pth
 *.engine
