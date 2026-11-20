@@ -38,15 +38,19 @@ YellowJacketDevice::YellowJacketDevice(
 
 void YellowJacketDevice::set_pos(float pos_rev) noexcept {
   target_pos_.store(pos_rev, std::memory_order_release);
-  control_mode_.store(ControlMode::POSITION, std::memory_order_release);
-  set_controller_mode();
+  if (control_mode_.load(std::memory_order_acquire) != ControlMode::POSITION) {
+    control_mode_.store(ControlMode::POSITION, std::memory_order_release);
+    set_controller_mode();
+  }
   mark_control_updated();
 }
 
 void YellowJacketDevice::set_vel(float vel_rev_s) noexcept {
   target_vel_.store(vel_rev_s, std::memory_order_release);
-  control_mode_.store(ControlMode::VELOCITY, std::memory_order_release);
-  set_controller_mode();
+  if (control_mode_.load(std::memory_order_acquire) != ControlMode::VELOCITY) {
+    control_mode_.store(ControlMode::VELOCITY, std::memory_order_release);
+    set_controller_mode();
+  }
   mark_control_updated();
 }
 
