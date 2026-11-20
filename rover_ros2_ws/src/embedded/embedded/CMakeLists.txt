@@ -38,6 +38,7 @@ target_link_libraries(CanManagerCore
 # ==============================================================================
 add_library(CanDevices SHARED
   src/devices/ODriveDevice.cpp
+  src/devices/YellowJacketDevice.cpp
 )
 
 target_link_libraries(CanDevices
