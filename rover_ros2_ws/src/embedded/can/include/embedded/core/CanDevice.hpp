@@ -29,8 +29,8 @@ public:
   CanDevice(
       std::string name,
       CanFilter filter,
-      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(100),
-      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(0),
+      std::chrono::milliseconds rx_timeout = std::chrono::milliseconds(1000),
+      std::chrono::milliseconds control_timeout = std::chrono::milliseconds(1000),
       std::string manager_name = "can0",
       std::optional<uint32_t> id = std::nullopt);
 
@@ -126,17 +126,6 @@ public:
       uint32_t id,
       const std::string& manager_name = "can0") {
     return find_device_impl(std::nullopt, id, manager_name);
-  }
-
-  static std::shared_ptr<Derived> find_device() {
-    return find_device_impl(std::nullopt, std::nullopt, "can0");
-  }
-
-  static std::shared_ptr<Derived> find_device(
-      const std::optional<std::string>& name,
-      const std::optional<uint32_t>& id,
-      const std::string& manager_name = "can0") {
-    return find_device_impl(name, id, manager_name);
   }
 
 private:

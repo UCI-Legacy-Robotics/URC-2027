@@ -28,7 +28,6 @@ public:
   std::shared_ptr<CanDevice> get_device(const std::string& name) const;
   std::shared_ptr<CanDevice> get_device(uint32_t id) const;
   std::vector<std::shared_ptr<CanDevice>> get_all_devices() const;
-  const std::string& interface_name() const noexcept { return interface_name_; }
 
   // Polymorphic scheduler entry point for any TxMessage subclass
   void schedule(std::shared_ptr<TxMessage> msg);
