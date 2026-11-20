@@ -8,6 +8,10 @@
 #include <string>
 #include <thread>
 
+// This test program demonstrates the usage of the ODriveDevice class by simulating a control loop
+// with a mock ODrive device. It registers an ODrive device, sends control commands,
+// and retrieves telemetry data in a loop, printing the results to the console.
+
 using namespace std::chrono_literals;
 
 int main(int argc, char** argv) {
@@ -24,8 +28,6 @@ int main(int argc, char** argv) {
     odrives[i] = ODriveDevice::register_device(
         "wheel_motor_" + std::to_string(node_id), node_id, 0ms, 100ms, interface_name);
   }
-
-  std::this_thread::sleep_for(10000ms); // Wait for my caveman brain to process ts
 
   std::cout << "Registered '" << odrive->name() << "' on " << interface_name << "\n";
 
