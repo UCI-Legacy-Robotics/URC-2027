@@ -60,3 +60,17 @@ def test_framerate_invariant():
 def test_not_enough_history_returns_none():
     t, f = wave(30)
     assert resample_window(t[:20], f[:20]) is None   # only ~0.6 s
+
+
+def test_face_and_legs_hidden():
+    x, y, c = make_person()
+    out = normalize_frame(x, y, c)
+    assert not out[[0, 1, 2, 3, 4, 13, 14, 15, 16]].any()   # face + legs all zero
+    assert out[[5, 6, 7, 8, 9, 10, 11, 12]].any()           # arms + torso still there
+
+
+def test_used_parts_can_be_changed():
+    x, y, c = make_person()
+    out = normalize_frame(x, y, c, used_parts=('arms', 'torso', 'legs'))
+    assert out[[13, 14, 15, 16]].any()                      # legs kept when asked for
+    assert not out[[0, 1, 2, 3, 4]].any()                   # face still hidden
