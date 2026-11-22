@@ -18,18 +18,18 @@ YellowJacketDevice::YellowJacketDevice(
           node_id),
       node_id_(node_id),
       setpoint_periodic_(create_periodic(
-          std::chrono::microseconds(1000000),  // BS test val
+          std::chrono::microseconds(20000),
           [this]() { return build_normal_setpoint_frame(); },
           [this]() { return build_safe_setpoint_frame(); })),
       set_controller_mode_cmd_(create_immediate([this]() -> std::optional<CanFrame> {
         CanFrame frame = CanFrame::make_can_simple(node_id_, kCmdSetControllerMode, 8);
         const uint8_t control_mode_bytes[8] = {
-            0x00,
-            0x00,
-            0x00,
             0x05,
             0x00,
+            0x00,
+            0x00,
             static_cast<uint8_t>(control_mode_.load(std::memory_order_acquire)),
+            0x00,
             0x00,
             0x00};
         std::memcpy(frame.data.data(), control_mode_bytes, sizeof(control_mode_bytes));
@@ -38,23 +38,29 @@ YellowJacketDevice::YellowJacketDevice(
 
 void YellowJacketDevice::set_pos(float pos_rev) noexcept {
   target_pos_.store(pos_rev, std::memory_order_release);
-  control_mode_.store(ControlMode::POSITION, std::memory_order_release);
-  set_controller_mode();
+  if (control_mode_.load(std::memory_order_acquire) != ControlMode::POSITION) {
+    control_mode_.store(ControlMode::POSITION, std::memory_order_release);
+    set_controller_mode();
+  }
   mark_control_updated();
 }
 
 void YellowJacketDevice::set_vel(float vel_rev_s) noexcept {
   target_vel_.store(vel_rev_s, std::memory_order_release);
-  control_mode_.store(ControlMode::VELOCITY, std::memory_order_release);
-  set_controller_mode();
+  if (control_mode_.load(std::memory_order_acquire) != ControlMode::VELOCITY) {
+    control_mode_.store(ControlMode::VELOCITY, std::memory_order_release);
+    set_controller_mode();
+  }
   mark_control_updated();
 }
 
 void YellowJacketDevice::set_duty(int32_t duty_pwm) noexcept {
   // -32768 to 32767 range corresponding to -100% to 100% duty cycle
   target_duty_.store(duty_pwm, std::memory_order_release);
-  control_mode_.store(ControlMode::DUTY_CYCLE, std::memory_order_release);
-  set_controller_mode();
+  if (control_mode_.load(std::memory_order_acquire) != ControlMode::DUTY_CYCLE) {
+    control_mode_.store(ControlMode::DUTY_CYCLE, std::memory_order_release);
+    set_controller_mode();
+  }
   mark_control_updated();
 }
 
@@ -77,22 +83,26 @@ std::optional<CanFrame> YellowJacketDevice::build_normal_setpoint_frame() const 
   switch (control_mode_.load(std::memory_order_acquire)) {
     case ControlMode::POSITION: {
       CanFrame f = CanFrame::make_can_simple(node_id_, kCmdSetInputPos, 8);
-      float pos = target_pos_.load(std::memory_order_acquire);
+      // float pos = target_pos_.load(std::memory_order_acquire);
       // std::memcpy(&f.data[0], &target_pos_.load(std::memory_order_acquire), sizeof(int32_t));
       return f;
     }
 
     case ControlMode::VELOCITY: {
       CanFrame f = CanFrame::make_can_simple(node_id_, kCmdSetInputVelandDuty, 8);
+      // float vel = target_vel_.load(std::memory_order_acquire);
       // std::memcpy(&f.data[0], &target_vel_.load(std::memory_order_acquire), sizeof(int32_t));
       return f;
     }
 
     case ControlMode::DUTY_CYCLE: {
       CanFrame f = CanFrame::make_can_simple(node_id_, kCmdSetInputVelandDuty, 8);
-      // std::memcpy(&f.data[0], &target_duty_.load(std::memory_order_acquire), sizeof(int32_t));
+      int32_t duty = target_duty_.load(std::memory_order_acquire);
+      std::memcpy(&f.data[0], &duty, sizeof(int32_t));
       return f;
     }
+
+    default: {}
   }
   return std::nullopt;
 }

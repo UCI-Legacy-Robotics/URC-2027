@@ -18,7 +18,8 @@ public:
   enum class ControlMode : uint8_t {
     POSITION = 4,
     VELOCITY = 3,
-    DUTY_CYCLE = 1
+    DUTY_CYCLE = 1,
+    NO_CONTROL = 0
   };
 
   // --- Continuous Setpoints (Sampled at 200 Hz by setpoint_periodic_) ---
@@ -56,10 +57,10 @@ private:
 
   const uint8_t node_id_;
 
-  std::atomic<ControlMode> control_mode_{ControlMode::VELOCITY};
+  std::atomic<ControlMode> control_mode_{ControlMode::NO_CONTROL};
   std::atomic<float> target_pos_{0.0f};
   std::atomic<float> target_vel_{0.0f};
-  std::atomic<int32_t> target_duty_{0.0f};
+  std::atomic<int32_t> target_duty_{0};
 
   std::atomic<float> pos_est_{0.0f};
   std::atomic<float> vel_est_{0.0f};

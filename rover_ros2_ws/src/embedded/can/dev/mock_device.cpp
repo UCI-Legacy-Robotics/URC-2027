@@ -17,6 +17,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+// Mock Odrive Device to simulate real device when testing in virtual CAN interface (vcan0)
+// This is useful for testing the ODriveDevice class without requiring a physical ODrive device 
+// connected to the system.
+
 namespace {
 constexpr uint8_t kCmdHeartbeat = 0x01;
 constexpr uint8_t kCmdSetAxisState = 0x07;

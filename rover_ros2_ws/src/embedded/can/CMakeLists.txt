@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(embedded_pkg)
+project(embedded_can)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -38,6 +38,7 @@ target_link_libraries(CanManagerCore
 # ==============================================================================
 add_library(CanDevices SHARED
   src/devices/ODriveDevice.cpp
+  src/devices/YellowJacketDevice.cpp
 )
 
 target_link_libraries(CanDevices
@@ -48,16 +49,16 @@ target_link_libraries(CanDevices
 # ==============================================================================
 # 3. OPTIONAL STANDALONE TEST EXECUTABLE
 # ==============================================================================
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
-  add_executable(odrive_test src/main.cpp)
-  target_link_libraries(odrive_test PRIVATE CanDevices)
-  install(TARGETS odrive_test DESTINATION lib/${PROJECT_NAME})
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/dev/mock_device.cpp")
+  add_executable(mock_device dev/mock_device.cpp)
+  target_link_libraries(mock_device PRIVATE CanDevices)
+  install(TARGETS mock_device DESTINATION lib/${PROJECT_NAME})
 endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/odrive_mock.cpp")
-  add_executable(odrive_mock src/odrive_mock.cpp)
-  target_link_libraries(odrive_mock PRIVATE CanDevices)
-  install(TARGETS odrive_mock DESTINATION lib/${PROJECT_NAME})
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/dev/test_control.cpp")
+  add_executable(test_control dev/test_control.cpp)
+  target_link_libraries(test_control PRIVATE CanDevices)
+  install(TARGETS test_control DESTINATION lib/${PROJECT_NAME})
 endif()
 
 # ==============================================================================

@@ -24,14 +24,10 @@ public:
   CanManager(const CanManager&) = delete;
   CanManager& operator=(const CanManager&) = delete;
 
-  bool start();
-  void stop();
-
   bool deregister_device(const std::string& name, const CanDevice* expected_device = nullptr);
   std::shared_ptr<CanDevice> get_device(const std::string& name) const;
   std::shared_ptr<CanDevice> get_device(uint32_t id) const;
   std::vector<std::shared_ptr<CanDevice>> get_all_devices() const;
-  const std::string& interface_name() const noexcept { return interface_name_; }
 
   // Polymorphic scheduler entry point for any TxMessage subclass
   void schedule(std::shared_ptr<TxMessage> msg);
@@ -53,6 +49,8 @@ private:
 
   bool open_socket();
   void close_socket();
+  bool start();
+  void stop();
   bool register_device(std::shared_ptr<CanDevice> device);
   void thread_finished();
   void rebuild_rx_routes_and_filters();
