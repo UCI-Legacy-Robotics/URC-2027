@@ -14,10 +14,11 @@
 
 class StepperDevice : public CanDeviceFactory<StepperDevice> {
 public:
+  // chage if the master can sheet changes the encoding
   enum class ControlMode : uint8_t {
-    POSITION,
-    VELOCITY,
-    NO_CONTROL
+    POSITION = 0,
+    VELOCITY = 1,
+    NO_CONTROL = 0xFF
   };
 
   // --- Continuous Setpoints (Sampled at 200 Hz by setpoint_periodic_) ---
@@ -53,13 +54,12 @@ private:
   static constexpr uint8_t kCmdSetControllerMode = 0x00B;
   static constexpr uint8_t kCmdSetInputPos = 0x00C;
   static constexpr uint8_t kCmdSetInputVel = 0x00D;
-  // Set_Controller_Mode submodes.
-  static constexpr uint16_t kSubmodePos = 0x00;
-  static constexpr uint16_t kSubmodeVel = 0x01;
+  // velocity limit
   static constexpr uint8_t kMaxVelStepsPerSec = 180;
 
   std::optional<CanFrame> build_normal_setpoint_frame() const noexcept;
   std::optional<CanFrame> build_safe_setpoint_frame() const noexcept;
+  std::optional<CanFrame> build_controller_mode_frame() const noexcept;
   bool set_controller_mode() noexcept;
 
   static void pack_u32(uint8_t* dst, uint32_t val) noexcept;
