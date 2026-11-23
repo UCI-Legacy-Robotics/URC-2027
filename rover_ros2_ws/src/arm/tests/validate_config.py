@@ -83,9 +83,12 @@ def validate(model):
     assert {joint.get('name') for joint in controls} == active and len(controls) == len(active) == 8
     initial = load('arm_control_config/config/initial_positions.yaml')['initial_positions']
     assert set(initial) == active
+    hardware_interfaces = {}
     for joint in controls:
         name = joint.get('name')
-        assert [item.get('name') for item in joint.findall('command_interface')] == ['position']
+        hardware_interfaces[name] = {item.get('name') for item in joint.findall('command_interface')}
+        expected_interface = 'velocity' if name in {'claw_to_left_grip', 'claw_to_right_grip'} else 'position'
+        assert hardware_interfaces[name] == {expected_interface}, name
         assert {item.get('name') for item in joint.findall('state_interface')} == {'position', 'velocity'}
         assert float(joint.find("state_interface[@name='position']/param").text) == initial[name]
         if joints[name].get('type') != 'continuous':
@@ -97,14 +100,24 @@ def validate(model):
     manager = controllers['controller_manager']['ros__parameters']
     limits = load('moveit_config/config/joint_limits.yaml')['joint_limits']
     assert set(limits) == active
+    assert set(mapping['controller_names']) == {'arm_controller', 'solenoid_controller'}
+    assert 'gripper_controller' not in mapping, 'Forward controller must not advertise a MoveIt action'
     claims = []
-    for name in mapping['controller_names']:
+    for name in ('arm_controller', 'gripper_controller', 'solenoid_controller'):
         configured = controllers[name]['ros__parameters']
-        assert manager[name]['type'] == 'joint_trajectory_controller/JointTrajectoryController'
-        assert configured['command_interfaces'] == ['position']
-        assert set(configured['joints']) == set(mapping[name]['joints'])
-        assert mapping[name]['type'] == 'FollowJointTrajectory'
-        assert mapping[name]['action_ns'] == 'follow_joint_trajectory'
+        if name == 'gripper_controller':
+            assert manager[name]['type'] == 'forward_command_controller/ForwardCommandController'
+            assert configured['interface_name'] == 'velocity'
+            interfaces = {'velocity'}
+        else:
+            assert manager[name]['type'] == 'joint_trajectory_controller/JointTrajectoryController'
+            assert configured['command_interfaces'] == ['position']
+            assert set(configured['joints']) == set(mapping[name]['joints'])
+            assert mapping[name]['type'] == 'FollowJointTrajectory'
+            assert mapping[name]['action_ns'] == 'follow_joint_trajectory'
+            interfaces = set(configured['command_interfaces'])
+        for joint in configured['joints']:
+            assert hardware_interfaces[joint] == interfaces, (name, joint)
         claims += configured['joints']
     assert Counter(claims) == Counter({joint: 1 for joint in active}), 'Coverage or ownership mismatch'
     srdf = ET.parse(ROOT / 'moveit_config/config/arm.srdf').getroot()
@@ -113,7 +126,7 @@ def validate(model):
     assert set(groups) == set(expected)
     ompl = load('moveit_config/config/ompl_planning.yaml')
     for group, controller in expected.items():
-        assert groups[group] == set(mapping[controller]['joints']), group
+        assert groups[group] == set(controllers[controller]['ros__parameters']['joints']), group
         assert ompl[group]['default_planner_config'] in ompl['planner_configs'], group
     for state in srdf.findall('group_state'):
         assert {joint.get('name') for joint in state.findall('joint')} == groups[state.get('group')]
@@ -135,6 +148,13 @@ def validate(model):
     for file in (ROOT / 'arm_gamepad_teleop/config').glob('teleop_*.yaml'):
         values = load(file.relative_to(ROOT))['arm_teleop']['ros__parameters']
         assert set(values['joint_names']) == groups['arm'], file
+        assert isinstance(values.get('gripper_enabled'), bool), file
+        if values['gripper_enabled']:
+            trigger_axes = {values['gripper_open_axis'], values['gripper_close_axis']}
+            assert len(trigger_axes) == 2 and min(trigger_axes) >= 0, file
+            assert not trigger_axes.intersection(values['axes']), 'Triggers overlap arm axes'
+            assert 0 <= values['gripper_open_position'] < values['gripper_closed_position'] <= 0.03, file
+            assert 0 < values['gripper_speed'] <= 0.02, file
 
 
 def main():

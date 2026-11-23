@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Optional mesh checks: pip install trimesh python-fcl numpy PyYAML.
+"""Optional mesh checks: pip install trimesh python-fcl numpy scipy PyYAML.
 
 Checks sampled configurations using the supplied SRDF collision exemptions.
 This is not a replacement for live MoveIt/Gazebo testing or swept-volume checking.

@@ -1,3 +1,5 @@
+#include "gripper_control.hpp"
+
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -42,12 +44,13 @@ public:
     yaw_positive_ = declare_parameter("yaw_positive_button", 11);
     yaw_negative_ = declare_parameter("yaw_negative_button", 12);
 
+    gripper_enabled_ = declare_parameter("gripper_enabled", false);
     gripper_open_axis_ = declare_parameter("gripper_open_axis", 4);
     gripper_close_axis_ = declare_parameter("gripper_close_axis", 5);
     gripper_trigger_threshold_ = declare_parameter("gripper_trigger_threshold", 0.5);
 
     gripper_open_position_ = declare_parameter("gripper_open_position", 0.0);
-    gripper_closed_position_ = declare_parameter("gripper_closed_position", 0.05);
+    gripper_closed_position_ = declare_parameter("gripper_closed_position", 0.03);
     gripper_speed_ = declare_parameter("gripper_speed", 0.02);
 
     deadzone_ = declare_parameter("deadzone", 0.1);
@@ -64,14 +67,20 @@ public:
       throw std::runtime_error("Invalid arm teleop configuration");
     }
 
-    if (gripper_open_axis_ < 0 || gripper_close_axis_ < 0 ||
+    if (gripper_enabled_ && (gripper_open_axis_ < 0 || gripper_close_axis_ < 0 ||
         gripper_open_axis_ == gripper_close_axis_ || !std::isfinite(gripper_trigger_threshold_) ||
         gripper_trigger_threshold_ <= 0.0 || gripper_trigger_threshold_ >= 1.0 ||
         !std::isfinite(gripper_open_position_) || !std::isfinite(gripper_closed_position_) ||
         gripper_open_position_ < 0.0 || gripper_closed_position_ > 0.05 ||
         gripper_open_position_ >= gripper_closed_position_ || !std::isfinite(gripper_speed_) ||
-        gripper_speed_ <= 0.0 || gripper_speed_ > 0.02) {
+        gripper_speed_ <= 0.0 || gripper_speed_ > 0.02)) {
       throw std::runtime_error("Invalid gripper configuration");
+    }
+
+    if (gripper_enabled_ &&
+        (std::find(axes_.begin(), axes_.end(), gripper_open_axis_) != axes_.end() ||
+         std::find(axes_.begin(), axes_.end(), gripper_close_axis_) != axes_.end())) {
+      throw std::runtime_error("Gripper trigger axes must not overlap arm axes");
     }
 
     for (double sign : signs_) {
@@ -102,8 +111,10 @@ public:
 
     RCLCPP_INFO(get_logger(), "Starting in joint mode. Release enable at neutral before moving.");
 
-    RCLCPP_INFO(get_logger(), "Gripper controls: L2 axis %d opens, R2 axis %d closes.",
-                gripper_open_axis_, gripper_close_axis_);
+    if (gripper_enabled_) {
+      RCLCPP_INFO(get_logger(), "Gripper: axis %d opens, axis %d closes. Release both triggers to arm.",
+                  gripper_open_axis_, gripper_close_axis_);
+    }
   }
 
 private:
@@ -120,6 +131,8 @@ private:
   int yaw_positive_;
   int yaw_negative_;
 
+  bool gripper_enabled_;
+  GripperControl gripper_control_;
   int gripper_open_axis_;
   int gripper_close_axis_;
 
@@ -127,7 +140,6 @@ private:
   double gripper_open_position_;
   double gripper_closed_position_;
   double gripper_speed_;
-  int gripper_direction_ = 0;
   const std::array<std::string, 2> gripper_joints_{"claw_to_left_grip", "claw_to_right_grip"};
   std::array<double, 2> gripper_positions_{};
   bool have_gripper_state_ = false;
@@ -194,11 +206,11 @@ private:
       }
     }
 
-    if (gripper_open_axis_ < 0 || gripper_close_axis_ < 0 ||
+    if (gripper_enabled_ && (gripper_open_axis_ < 0 || gripper_close_axis_ < 0 ||
         static_cast<size_t>(gripper_open_axis_) >= joy.axes.size() ||
         static_cast<size_t>(gripper_close_axis_) >= joy.axes.size() ||
         !std::isfinite(joy.axes[gripper_open_axis_]) ||
-        !std::isfinite(joy.axes[gripper_close_axis_])) {
+        !std::isfinite(joy.axes[gripper_close_axis_]))) {
       return false;
     }
 
@@ -223,22 +235,15 @@ private:
 
   void publish_gripper_command(bool fresh_input, Clock::time_point time)
   {
-    std_msgs::msg::Float64MultiArray command;
-    command.data = {0.0, 0.0};
-    const bool fresh_state =
-        have_gripper_state_ &&
-        std::chrono::duration<double>(time - last_gripper_state_).count() <= timeout_;
-    if (fresh_input && fresh_state) {
-      for (size_t i = 0; i < gripper_positions_.size(); ++i) {
-        // A small tolerance avoids commanding into a numerically rounded hard stop.
-        const bool at_limit = gripper_direction_ > 0
-                                  ? gripper_positions_[i] >= gripper_closed_position_ - 1e-5
-                                  : gripper_positions_[i] <= gripper_open_position_ + 1e-5;
-        if (!at_limit) {
-          command.data[i] = gripper_direction_ * gripper_speed_;
-        }
-      }
+    if (!gripper_enabled_) {
+      return;
     }
+    const bool fresh_state = have_gripper_state_ &&
+        std::chrono::duration<double>(time - last_gripper_state_).count() <= timeout_;
+    const auto velocities = gripper_control_.command(gripper_positions_, fresh_input, fresh_state,
+        gripper_open_position_, gripper_closed_position_, gripper_speed_);
+    std_msgs::msg::Float64MultiArray command;
+    command.data.assign(velocities.begin(), velocities.end());
     gripper_publisher_->publish(command);
   }
 
@@ -248,7 +253,7 @@ private:
       have_input_ = false;
       armed_ = false;
 
-      gripper_direction_ = 0;
+      gripper_control_.stop();
 
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
                            "Invalid /joy message. Check controller indices.");
@@ -260,6 +265,7 @@ private:
 
     if (std::chrono::duration<double>(received - last_input_).count() > timeout_) {
       armed_ = false;
+      gripper_control_.stop();
     }
 
     last_input_ = received;
@@ -267,16 +273,10 @@ private:
 
     enable_ = joy.buttons[enable_button_] != 0;
 
-    // PS5 analog triggers:
-    // Released = +1.0
-    // Fully pressed = -1.0
-
-    const bool open = joy.axes[gripper_open_axis_] < -gripper_trigger_threshold_;
-
-    const bool close = joy.axes[gripper_close_axis_] < -gripper_trigger_threshold_;
-
-    // Hold either trigger for constant speed; both pressed (or released) stops.
-    gripper_direction_ = static_cast<int>(close) - static_cast<int>(open);
+    if (gripper_enabled_) {
+      gripper_control_.read_triggers(joy.axes[gripper_open_axis_], joy.axes[gripper_close_axis_],
+                                     gripper_trigger_threshold_);
+    }
 
     // Preserve existing arm joystick mapping.
 

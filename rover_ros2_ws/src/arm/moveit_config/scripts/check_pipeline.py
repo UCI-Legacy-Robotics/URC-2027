@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only readiness check; --execute also plans/moves/restores all groups in mock mode."""
+"""Read-only readiness check; --execute tests trajectory-controlled groups in mock mode."""
 import argparse
 import math
 from pathlib import Path
@@ -33,14 +33,43 @@ class PipelineCheck(Node):
         self.controllers = yaml.safe_load((control / 'config/ros2_controllers.yaml').read_text())
         self.mapping = yaml.safe_load((config / 'config/moveit_controllers.yaml').read_text())[
             'moveit_simple_controller_manager']
-        self.required = {joint for name in self.mapping['controller_names']
-                         for joint in self.mapping[name]['joints']}
+        self.control_names = ('arm_controller', 'gripper_controller', 'solenoid_controller')
+        manager = self.controllers['controller_manager']['ros__parameters']
+        self.controller_types = {name: manager[name]['type'] for name in self.control_names}
+        self.expected_interfaces = {}
+        self.required = set()
+        self.trajectory_clients = {}
+        for name in self.control_names:
+            params = self.controllers[name]['ros__parameters']
+            joints = params['joints']
+            kind = self.controller_types[name]
+            if kind == 'joint_trajectory_controller/JointTrajectoryController':
+                interfaces = params['command_interfaces']
+                if name not in self.mapping['controller_names']:
+                    raise RuntimeError(f'{name}: missing from moveit_controllers.yaml')
+                entry = self.mapping[name]
+                if entry.get('type') != 'FollowJointTrajectory':
+                    raise RuntimeError(f'{name}: MoveIt mapping must use FollowJointTrajectory')
+                if set(entry['joints']) != set(joints):
+                    raise RuntimeError(f'{name}: MoveIt and ros2_control joint lists differ')
+                action_ns = entry['action_ns'].strip('/')
+                self.trajectory_clients[name] = ActionClient(
+                    self, FollowJointTrajectory, f'/{name}/{action_ns}')
+            elif kind == 'forward_command_controller/ForwardCommandController':
+                interfaces = [params['interface_name']]
+            elif kind == 'velocity_controllers/JointGroupVelocityController':
+                interfaces = ['velocity']
+            else:
+                raise RuntimeError(f'{name}: unsupported controller type {kind}')
+            if not joints or not interfaces or any(not interface for interface in interfaces):
+                raise RuntimeError(f'{name}: empty joints or command interfaces')
+            self.required.update(joints)
+            self.expected_interfaces[name] = {
+                f'{joint}/{interface}' for joint in joints for interface in interfaces}
         self.create_subscription(JointState, '/joint_states', self.on_state, 10)
         self.create_subscription(String, '/robot_description', self.on_description,
                                  QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.list_client = self.create_client(ListControllers, '/controller_manager/list_controllers')
-        self.trajectory_clients = {name: ActionClient(self, FollowJointTrajectory,
-            f'/{name}/{self.mapping[name]["action_ns"]}') for name in self.mapping['controller_names']}
         self.move_client = ActionClient(self, MoveGroup, '/move_action')
 
     def on_state(self, message):
@@ -69,7 +98,7 @@ class PipelineCheck(Node):
 
     def ready(self, planning):
         self.wait_until(self.list_client.service_is_ready, 'controller manager service')
-        wanted = {'joint_state_broadcaster', *self.mapping['controller_names']}
+        wanted = {'joint_state_broadcaster', *self.control_names}
         deadline = time.monotonic() + self.timeout
         active = set()
         while time.monotonic() < deadline:
@@ -82,20 +111,35 @@ class PipelineCheck(Node):
         if not wanted <= active:
             raise RuntimeError(f'Inactive or missing controllers: {sorted(wanted - active)}')
         for controller in result.controller:
-            if controller.name in self.mapping['controller_names']:
-                expected = {f'{name}/position' for name in self.mapping[controller.name]['joints']}
-                if set(controller.claimed_interfaces) != expected:
-                    raise RuntimeError(f'{controller.name}: incorrect claimed command interfaces')
+            if controller.name in self.expected_interfaces:
+                if controller.type != self.controller_types[controller.name]:
+                    raise RuntimeError(f'{controller.name}: loaded type {controller.type} differs from '
+                                       f'configured type {self.controller_types[controller.name]}')
+                expected = self.expected_interfaces[controller.name]
+                actual = set(controller.claimed_interfaces)
+                if actual != expected:
+                    raise RuntimeError(f'{controller.name}: incorrect claimed command interfaces; '
+                                       f'expected={sorted(expected)}, actual={sorted(actual)}')
         self.wait_until(lambda: self.required <= self.positions.keys() and all(
             time.monotonic() - self.received[name] < 2.0 for name in self.required),
-            'fresh finite positions for all eight controlled joints')
+            f'fresh finite positions for all {len(self.required)} controlled joints')
         self.wait_until(lambda: bool(self.description), '/robot_description')
         for name, client in self.trajectory_clients.items():
             self.wait_until(client.server_is_ready, f'{name} FollowJointTrajectory action')
         if planning:
             self.wait_until(self.move_client.server_is_ready, '/move_action')
-        print('PASS: four active controllers, eight claimed position interfaces, all eight joint states, robot description, '
-              'three trajectory action servers' + (', and MoveGroup.' if planning else '.'), flush=True)
+        print(f'PASS: {len(wanted)} active controllers, configured command interfaces, '
+              f'all {len(self.required)} joint states, robot description, '
+              f'{len(self.trajectory_clients)} trajectory action servers'
+              + (', and MoveGroup.' if planning else '.'), flush=True)
+        for name in self.control_names:
+            if name not in self.trajectory_clients:
+                print(f'NOTE: {name} uses direct commands on /{name}/commands; '
+                      'no FollowJointTrajectory action is expected or tested.', flush=True)
+                if name in self.mapping['controller_names']:
+                    print(f'NOTE: {name} is still listed in moveit_controllers.yaml; '
+                          'that mapping does not provide trajectory execution for a direct-command controller.',
+                          flush=True)
 
     def move(self, group, target):
         goal = MoveGroup.Goal()
@@ -140,6 +184,9 @@ class PipelineCheck(Node):
         for group, controller, distance in [('arm', 'arm_controller', 0.05),
                                              ('Gripper', 'gripper_controller', 0.005),
                                              ('Solenoid', 'solenoid_controller', 0.003)]:
+            if controller not in self.trajectory_clients:
+                print(f'SKIP: {group} uses direct commands; no MoveGroup execution test.', flush=True)
+                continue
             names = self.mapping[controller]['joints']
             start = {name: self.positions[name] for name in names}
             target = dict(start)
@@ -159,23 +206,28 @@ class PipelineCheck(Node):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--controllers-only', action='store_true')
-    parser.add_argument('--execute', action='store_true', help='Move each group and return; mock backend only')
+    parser.add_argument('--execute', action='store_true',
+                        help='Move trajectory-controlled groups and return; mock backend only')
     parser.add_argument('--timeout', type=float, default=30.0)
     args = parser.parse_args(remove_ros_args(sys.argv)[1:])
     if args.execute and args.controllers_only:
         parser.error('--execute requires MoveGroup; omit --controllers-only')
+    if not math.isfinite(args.timeout) or args.timeout <= 0:
+        parser.error('--timeout must be finite and greater than zero')
     rclpy.init()
-    node = PipelineCheck(args.timeout)
+    node = None
     try:
+        node = PipelineCheck(args.timeout)
         node.ready(planning=not args.controllers_only)
         if args.execute:
             node.exercise_mock()
         return 0
-    except (RuntimeError, KeyboardInterrupt) as error:
+    except (RuntimeError, KeyError, OSError, ValueError, yaml.YAMLError, KeyboardInterrupt) as error:
         print(f'FAIL: {error}', file=sys.stderr, flush=True)
         return 1
     finally:
-        node.destroy_node()
+        if node is not None:
+            node.destroy_node()
         rclpy.try_shutdown()
 
 

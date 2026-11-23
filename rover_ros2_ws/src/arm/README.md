@@ -1,138 +1,153 @@
-# Arm + gripper + solenoid integration
+# Arm, gripper, and solenoid
 
-Replacement for `URC-2027/rover_ros2_ws/src/arm`, targeting **ROS 2 Jazzy and Gazebo Harmonic**. Includes the five existing packages, meshes, and the existing patched five-DOF MoveIt Servo.
+ROS 2 Jazzy / Gazebo Harmonic stack with five arm joints, two gripper joints,
+and one solenoid joint. Includes the patched five-DOF MoveIt Servo. Physical
+motor drivers are not included; motion limits below are simulation defaults.
 
-Based on branch `aidan/arm/teleop`, commit `ffba676ef941e6ba903f8245c82eb896abc84bb9`, and the supplied new MoveIt configuration. The physical model includes both fingers, the camera, and the solenoid attached to the **left** finger. The three bounded revolute joints have limits of −π to +π; the original two continuous joints remain continuous.
+## Build from GitHub
 
-## Install
-
-Extract the ZIP. Replace the entire old `src/arm` directory with the extracted `arm_stack` directory, naming the destination `arm`. Do not merge the directories: that would retain obsolete launches/configuration. Keep your backup outside `src` so colcon does not discover duplicate packages.
-
-For an archive extracted to `~/Downloads/arm_stack`:
+Clone this repository or fetch the PR branch into your existing checkout, then:
 
 ```bash
-cd ~/URC-2027/rover_ros2_ws
-mv src/arm "$HOME/arm-stack-backup-$(date +%Y%m%d-%H%M%S)"
-cp -a ~/Downloads/arm_stack src/arm
+cd rover_ros2_ws
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths src/arm --ignore-src -r -y --rosdistro jazzy
 colcon build --symlink-install --packages-up-to arm_gamepad_teleop --allow-overriding moveit_servo
 source install/setup.bash
 ```
 
-Use a terminal sourced with this workspace for every command below. Build the included `moveit_servo`; the teleop launch checks its patch marker to catch accidentally selecting the stock package.
+Build the included `moveit_servo`; the teleop launch checks its patch marker to
+catch accidentally selecting the stock package. Source this workspace in each
+terminal. Keep backups outside `src` to avoid duplicate packages. Run only one
+bringup at a time.
 
-## First run: MoveIt and mock ros2_control
-
-```bash
-ros2 launch moveit_config bringup.launch.py backend:=mock
-```
-
-In RViz, select `arm`, `Gripper`, or `Solenoid` in the MotionPlanning panel. Set a joint target or named state, then use **Plan & Execute**. The tool groups intentionally use joint targets and do not have Cartesian IK solvers.
-
-In another sourced terminal:
-
-```bash
-# Read-only: verifies activation, claimed interfaces, joint feedback, and action servers.
-ros2 run moveit_config check_pipeline.py
-
-# Mock only: plans and executes a small motion for each group, checks feedback, and returns it.
-ros2 run moveit_config check_pipeline.py --execute
-```
-
-The second command tests the complete MoveGroup → trajectory action → controller → joint feedback path for each of the three groups. It refuses to move a Gazebo or physical backend. On failure it stops with the failing group/error; a failed motion is not guaranteed to return to its starting state. There are no physical hardware plugins in this bundle.
-
-## Gazebo
-
-Stop the mock launch before starting Gazebo:
-
-```bash
-ros2 launch moveit_config bringup.launch.py backend:=gazebo
-```
-
-For a headless Gazebo server, append `gz_args:='-r -s empty.sdf'`; append `rviz:=false` to omit RViz. The same three groups, actions, and controller YAML are used. A `/clock` bridge supplies simulation time. The Gazebo plugin creates the controller manager; the launch does not create a second one.
-
-Run `ros2 run moveit_config check_pipeline.py` to check the live Gazebo control interfaces. Use RViz to plan and execute on this backend. The automated moving test is intentionally mock-only. Gazebo world obstacles are not automatically copied into MoveIt's planning scene; add matching collision objects when planning around the floor or other objects.
-
-## Existing gamepad teleop
-
-Stop the planning launch, then run:
+## Gamepad teleoperation
 
 ```bash
 ros2 launch arm_gamepad_teleop teleop_sim.launch.py controller:=playstation5
 ```
 
-This defaults to Gazebo; `backend:=mock` also works. `playstation4` and `xbox` retain their existing mappings. The gamepad C++ node and patched Servo implementation are unchanged. Servo starts only after the controllers and all eight joint states are ready. This launch uses a robot-only RViz display and does not start MoveGroup: the existing gamepad node continuously publishes arm commands, which would compete with planned arm trajectories.
+This defaults to Gazebo. Append `backend:=mock` for mock hardware, `rviz:=false`
+for no RViz, or `gz_args:='-r -s empty.sdf'` for headless Gazebo. Servo, teleop,
+and the joystick driver start only after all four controllers and eight joint
+states are ready. A failed readiness check stops the launch. MoveGroup is not
+started, because its arm trajectories would compete with Servo's commands.
 
-The gamepad still commands the five arm joints. Both tool controllers run and expose their own trajectory actions; no unrequested button mappings were invented. For planned tool motion, use the planning launch above. Run only one arm bringup at a time.
+The PS5 profile retains the supplied device-specific `joy_node` mapping:
 
-## Group-to-controller mapping
-
-Group capitalization matches the supplied SRDF. Controller names are lowercase.
-
-| Planning group | Controlled joints | FollowJointTrajectory action |
-| --- | --- | --- |
-| `arm` | `base_mount_to_upper_base`, `upper_base_to_shoulder`, `shoulder_to_elbow`, `elbow_to_wrist`, `wrist_to_claw` | `/arm_controller/follow_joint_trajectory` |
-| `Gripper` | `claw_to_left_grip`, `claw_to_right_grip` | `/gripper_controller/follow_joint_trajectory` |
-| `Solenoid` | `grip_to_solenoid` | `/solenoid_controller/follow_joint_trajectory` |
-
-All eight joints expose a **position command** interface plus **position and velocity state** interfaces. `joint_state_broadcaster` publishes their feedback on `/joint_states`; robot_state_publisher publishes the transforms. MoveIt uses the Simple Controller Manager to send action goals. Only the arm trajectory controller accepts nonzero final velocity, as required by the existing Servo output.
-
-The solenoid is a separate planning group controlling the URDF's 0–15 mm prismatic stroke. It is not registered as a second nested end effector. The `Gripper` group remains the arm's end effector. Every link still participates in the robot model and collision checking regardless of which group is being planned.
-
-## Presets, limits, and model assumptions
-
-| Group | Named states |
+| Control | Input |
 | --- | --- |
-| `arm` | `home`: all five joints at zero |
-| `Gripper` | `open`: both joints at 0 m; `partially_closed`: both at 0.03 m |
-| `Solenoid` | `retracted`: 0 m; `extended`: 0.015 m |
+| Arm enable | Button 9; release at neutral to arm, then hold to move |
+| Joint/Cartesian mode | Button 6, at neutral with enable released |
+| Arm stick axes | 0, 1, 2, 3 |
+| Wrist − / + | Buttons 13 / 14 |
+| Cartesian yaw + / − | Buttons 11 / 12 |
+| Open / close gripper | L2 axis 4 / R2 axis 5 |
 
-**The supplied finger geometry intersects when both joints reach 0.05 m.** Mesh checks show about 15 mm minimum finger clearance at 0.03 m, about 2.2 mm at 0.04 m, and intersection by 0.045 m. The original 0–0.05 m joint limits are retained; MoveIt must reject colliding configurations. The full-stroke target is not offered as a preset, and finger-to-finger collision checking remains enabled. Reconcile the physical stroke/axes with CAD before changing those limits or allowing contact.
+Verify indices with `ros2 topic echo /joy` if your device/driver differs.
+Triggers must report +1 released and −1 pressed. The gripper is independent of
+the arm enable button and Servo mode: hold one trigger for constant speed;
+both pressed or neither pressed stops. Release both triggers after startup,
+invalid input, or stale input/feedback before moving again. Stale joystick or
+joint-state data commands zero velocity while teleop remains running.
 
-The two finger joints remain independent, matching the supplied URDF. Selecting a common named state commands equal strokes. If one actuator mechanically couples the fingers, encode the actual mimic/transmission relationship before hardware use; this bundle does not assume that relationship.
+`gripper_enabled` is explicitly true only in the PS5 profile. PS4 and Xbox
+retain their arm mappings, with gripper control disabled until dedicated trigger
+indices are configured. Enabling overlapping arm and trigger axes is rejected.
+A disabled gripper does not publish commands.
 
-Zero effort/velocity limits were replaced with explicit simulation defaults:
+The gripper commands 0.02 m/s per finger, from 0 to **0.03 m** by default. The
+30 mm closing limit matches the existing `partially_closed` named state. The
+URDF's 50 mm stroke is unchanged, but that target intersects the finger meshes;
+do not treat it as a usable teleop target. Each finger stops independently at
+its software endpoint. Sampled position checks can overshoot slightly and are
+not a hardware limit mechanism.
 
-| Joint set | URDF maximum velocity | MoveIt maximum acceleration | URDF effort limit |
+Direct gripper velocity commands bypass MoveIt's trajectory collision checking.
+The 30 mm preset avoids the known finger-to-finger intersection; it does not
+establish collision-free motion for every arm pose or external obstacle.
+A forwarding controller retains its last command: the teleop watchdog is not a
+hardware watchdog. The simulation launch shuts down if teleop/Servo/joy exits.
+
+## Planning and mock checks
+
+Stop teleop before starting planning:
+
+```bash
+ros2 launch moveit_config bringup.launch.py backend:=mock
+```
+
+In RViz, `arm` and `Solenoid` support **Plan & Execute**. `Gripper` remains in
+the robot model, end-effector definition, named states, and planning groups,
+but has no MoveIt execution action with the velocity-forwarding configuration.
+Do not use **Execute** for that group. For manual gripper motion use teleop.
+
+In another sourced terminal:
+
+```bash
+# Read-only readiness, including gripper activation/velocity claims and feedback.
+ros2 run moveit_config check_pipeline.py
+
+# Mock only: move and restore arm and solenoid; explicitly reports Gripper as skipped.
+ros2 run moveit_config check_pipeline.py --execute
+```
+
+`--execute` refuses non-mock backends and a running Servo. It is not a gripper
+motion test. A failed action is not guaranteed to restore its starting position.
+`--controllers-only` omits the MoveGroup check and is used by teleop startup.
+
+For Gazebo planning:
+
+```bash
+ros2 launch moveit_config bringup.launch.py backend:=gazebo
+```
+
+The Gazebo plugin creates the only controller manager; `/clock` is bridged for
+simulation time. World obstacles are not automatically copied into MoveIt's
+planning scene. Use `check_pipeline.py` without `--execute` on this backend.
+
+## Control interfaces
+
+| Group | Joints | Command path | Command interface |
 | --- | --- | --- | --- |
-| Five arm joints | 1 rad/s | 2 rad/s² | 100 N·m |
-| Two fingers | 0.02 m/s | 0.1 m/s² | 40 N |
-| Solenoid | 0.05 m/s | 0.2 m/s² | 20 N |
+| `arm` | Five arm joints | `/arm_controller/follow_joint_trajectory` (planning) or `/arm_controller/joint_trajectory` (Servo) | position |
+| `Gripper` | `claw_to_left_grip`, `claw_to_right_grip` | `/gripper_controller/commands`, `std_msgs/Float64MultiArray` in that joint order | velocity |
+| `Solenoid` | `grip_to_solenoid` | `/solenoid_controller/follow_joint_trajectory` | position |
 
-Default MoveIt velocity/acceleration scaling is 0.2. These values are **simulation configuration values, not measured hardware ratings**. The existing Servo speed settings are preserved. The repository does not supply a physical driver for these eight joints: real motor commands, feedback, limits, finger coupling, and electrical solenoid activation still require that hardware implementation. A trajectory controller models solenoid position; it does not itself switch a real solenoid coil.
+All eight joints expose position and velocity **state** interfaces. The state
+broadcaster publishes `/joint_states`. The gripper is deliberately absent from
+`moveit_controllers.yaml`; it is a ForwardCommandController, not a trajectory
+action server. The offline and live validators still require both gripper joints.
+Mock `calculate_dynamics` integrates velocity commands into position feedback.
 
-The arm group is now the serial chain `base_mount` → `claw`; the camera branch and world anchoring joint are excluded from its IK chain. KDL is configured only for that group. Five DOF cannot independently satisfy arbitrary position plus three-axis orientation goals; use reachable poses or joint targets. The existing Servo patch does not change this physical limitation.
+The fingers remain independent. If real hardware mechanically couples them,
+encode that relationship before hardware use. Solenoid position is a simulated
+0–15 mm stroke; its trajectory controller does not switch a real coil. Arm
+limits are 1 rad/s, 2 rad/s² and 100 N·m; finger limits are 0.02 m/s, 0.1 m/s²
+and 40 N; solenoid limits are 0.05 m/s, 0.2 m/s² and 20 N. These are unmeasured
+simulation settings. Bounded revolute joints retain ±π limits; continuous joints
+remain continuous. Five DOF cannot satisfy arbitrary six-dimensional poses.
 
-## Files to maintain
+## Maintaining and testing
 
-| Purpose | File |
-| --- | --- |
-| Physical model, geometry, hard joint limits | `arm/description/arm.urdf` |
-| All eight ros2_control joints and backend selection | `arm_control_config/models/arm.ros2_control.xacro` |
-| Shared model wrapper | `arm_control_config/models/arm.sim.urdf.xacro` |
-| Gazebo plugin | `arm_control_config/models/arm.gazebo.xacro` |
-| Controller definitions and joint lists | `arm_control_config/config/ros2_controllers.yaml` |
-| Startup joint positions for both backends | `arm_control_config/config/initial_positions.yaml` |
-| Groups, end effector, named states, collision exemptions | `moveit_config/config/arm.srdf` |
-| MoveIt action/controller mapping | `moveit_config/config/moveit_controllers.yaml` |
-| Planning limits and planners | `moveit_config/config/joint_limits.yaml`, `ompl_planning.yaml` |
-| Single planning/control launch | `moveit_config/launch/bringup.launch.py` |
+- Model/meshes/limits: `arm/description/arm.urdf`, `arm/meshes`.
+- Control interfaces: `arm_control_config/models/arm.ros2_control.xacro`.
+- Controller definitions: `arm_control_config/config/ros2_controllers.yaml`.
+- MoveIt groups/mappings: `moveit_config/config/arm.srdf`, `moveit_controllers.yaml`.
+- Trigger/control settings: `arm_gamepad_teleop/config/teleop_*.yaml`.
 
-The MoveIt URDF wrapper includes the canonical control model; there is no separate copy of its eight control interfaces. Both backends use the same controller YAML. Controller parameters are explicitly passed to the spawner for Jazzy, and time settings are passed to each loaded controller. Startup failures halt the launch instead of silently leaving a partially controlled arm.
-
-The redundant generated rsp, move_group, controller, warehouse, and static-TF launch files were removed. `demo.launch.py` remains a small alias for bringup, and `setup_assistant.launch.py` remains for editing the configuration. `arm_display.launch.py` is display-only; do not run its joint-state GUI beside a control launch.
-
-## Validation performed
-
-See `VALIDATION.md`. Xacro expansion, cross-file consistency, meshes, inertias, and sampled collision checks passed. **ROS nodes, C++ compilation, MoveGroup execution, and Gazebo dynamics could not be run in the preparation environment**, so live integration is not yet verified. The included checker provides the next validation step on your Jazzy installation.
-
-Offline configuration checks on a sourced ROS installation:
+From `rover_ros2_ws` on a sourced Jazzy installation:
 
 ```bash
 python3 src/arm/tests/validate_config.py
+python3 -m unittest discover -s src/arm/tests -p 'test_*.py' -v
+colcon test --packages-select arm_gamepad_teleop
+colcon test-result --verbose
 ```
 
-The optional `tests/validate_geometry.py` additionally requires `numpy`, `trimesh`, `python-fcl`, and `PyYAML`; those are validation-only dependencies, not runtime package dependencies.
+Optional sampled geometry checks require `numpy scipy trimesh python-fcl PyYAML`:
+`python3 src/arm/tests/validate_geometry.py`. They are not exhaustive collision tests.
 
-Implementation references: [Jazzy controller manager](https://control.ros.org/jazzy/doc/ros2_control/controller_manager/doc/userdoc.html), [Jazzy migration and spawner parameters](https://control.ros.org/jazzy/doc/ros2_control/doc/migration.html), [gz_ros2_control](https://control.ros.org/jazzy/doc/gz_ros2_control/doc/index.html), [MoveIt controller configuration](https://moveit.picknik.ai/main/doc/examples/controller_configuration/controller_configuration_tutorial.html).
+`.github/workflows/arm-validation.yml` runs offline checks, a Jazzy C++ build,
+and headless mock arm/solenoid execution. It does not test a physical gamepad,
+Gazebo dynamics, or actual hardware. See `VALIDATION.md` for what was run locally.

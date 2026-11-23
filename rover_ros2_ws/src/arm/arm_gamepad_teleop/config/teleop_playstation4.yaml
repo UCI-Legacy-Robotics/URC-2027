@@ -2,9 +2,10 @@ arm_teleop:
   ros__parameters:
     joint_names: [base_mount_to_upper_base, upper_base_to_shoulder, shoulder_to_elbow, elbow_to_wrist, wrist_to_claw]
     command_frame: base_mount
+    gripper_enabled: false  # Set only after mapping dedicated trigger axes.
 
     axes: [0, 1, 2, 5, 6]
-   
+
     axis_signs: [1.0, -1.0, 1.0, -1.0, -1.0]
 
     enable_button: 4         # Hold L1 to move.
@@ -12,7 +13,7 @@ arm_teleop:
     yaw_positive_button: 3  # Triangle: Cartesian yaw +.
     yaw_negative_button: 2  # Circle: Cartesian yaw -.
 
- 
+
     deadzone: 0.1
     joy_timeout: 0.5
     linear_speed: 0.15      # m/s

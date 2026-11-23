@@ -62,8 +62,8 @@ def launch_setup(context):
                               'rviz': LaunchConfiguration('rviz'),
                               'gz_args': LaunchConfiguration('gz_args')}.items()),
         RegisterEventHandler(OnProcessExit(target_action=ready, on_exit=after_ready)),
-        RegisterEventHandler(OnProcessExit(target_action=lambda action: action in (servo, teleop),
-            on_exit=[EmitEvent(event=Shutdown(reason='Servo or teleop exited.'))])),
+        RegisterEventHandler(OnProcessExit(target_action=lambda action: action in (servo, teleop, joy),
+            on_exit=[EmitEvent(event=Shutdown(reason='Servo, teleop, or joystick driver exited.'))])),
         ready,
     ]
 

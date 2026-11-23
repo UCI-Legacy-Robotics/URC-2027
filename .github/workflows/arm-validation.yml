@@ -1,0 +1,89 @@
+name: Arm validation
+
+on:
+  pull_request:
+    paths: ['rover_ros2_ws/src/arm/**', '.github/workflows/arm-validation.yml']
+  push:
+    paths: ['rover_ros2_ws/src/arm/**', '.github/workflows/arm-validation.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/checkout@v4
+        with:
+          repository: ament/ament_index
+          ref: jazzy
+          path: .ci/ament_index
+      - run: pip install xacro PyYAML numpy scipy trimesh python-fcl
+      - name: Check model, configuration, geometry, and checker regressions
+        env:
+          PYTHONPATH: ${{ github.workspace }}/.ci/ament_index/ament_index_python
+        run: |
+          python rover_ros2_ws/src/arm/tests/validate_config.py
+          python rover_ros2_ws/src/arm/tests/validate_geometry.py
+          python -m unittest discover -s rover_ros2_ws/src/arm/tests -p 'test_*.py' -v
+      - name: Compile and test gripper logic without ROS
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
+            -I rover_ros2_ws/src/arm/arm_gamepad_teleop/src \
+            rover_ros2_ws/src/arm/arm_gamepad_teleop/test/test_gripper_control.cpp \
+            -o /tmp/test_gripper_control
+          /tmp/test_gripper_control
+
+  jazzy-mock:
+    runs-on: ubuntu-24.04
+    container: ros:jazzy-ros-base-noble
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install arm dependencies
+        run: |
+          apt-get update
+          apt-get install -y python3-colcon-common-extensions python3-rosdep
+          rosdep update --rosdistro jazzy
+          source /opt/ros/jazzy/setup.bash
+          rosdep install --from-paths rover_ros2_ws/src/arm --ignore-src -r -y --rosdistro jazzy
+      - name: Build and test the five arm packages
+        working-directory: rover_ros2_ws
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --base-paths src/arm --symlink-install --parallel-workers 2 \
+            --allow-overriding moveit_servo --cmake-args -DBUILD_TESTING=ON
+          source install/setup.bash
+          colcon test --packages-select arm_gamepad_teleop
+          colcon test-result --verbose
+          python3 src/arm/tests/validate_config.py
+          python3 -m unittest discover -s src/arm/tests -p 'test_*.py' -v
+      - name: Run mock readiness and arm/solenoid execution
+        working-directory: rover_ros2_ws
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          source install/setup.bash
+          ros2 launch moveit_config bringup.launch.py backend:=mock rviz:=false > /tmp/arm-mock.log 2>&1 &
+          launch_pid=$!
+          cleanup() {
+            kill -INT "$launch_pid" 2>/dev/null || true
+            wait "$launch_pid" || true
+            cat /tmp/arm-mock.log
+          }
+          trap cleanup EXIT
+          timeout 240 ros2 run moveit_config check_pipeline.py --timeout 120 --execute
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arm-jazzy-logs
+          path: |
+            rover_ros2_ws/log
+            /tmp/arm-mock.log

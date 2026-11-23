@@ -1,4 +1,4 @@
-# Arm Servo only. All three controllers still run; tools accept their own action goals.
+# Arm Servo only. All three controllers still run; solenoid accepts action goals, gripper accepts direct velocity commands.
 move_group_name: arm
 command_in_type: speed_units
 publish_period: 0.01
