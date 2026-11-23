@@ -14,14 +14,14 @@
 
 class StepperDevice : public CanDeviceFactory<StepperDevice> {
 public:
-  // chage if the master can sheet changes the encoding
+  // values match Set_Controller_Mode submodes; change if the master CAN sheet changes the encoding
   enum class ControlMode : uint8_t {
     POSITION = 0,
     VELOCITY = 1,
     NO_CONTROL = 0xFF
   };
 
-  // --- Continuous Setpoints (Sampled at 200 Hz by setpoint_periodic_) ---
+  // --- Continuous Setpoints (sampled at 50 Hz by setpoint_periodic_) ---
   bool set_pos(int32_t pos_steps) noexcept;
   bool set_vel(int32_t vel_steps_s) noexcept;
 
@@ -37,6 +37,7 @@ public:
 
 protected:
   void on_rx(const CanFrame& frame) override;
+  void on_soft_block() override;
 
 private:
   friend class CanDeviceFactory<StepperDevice>;
@@ -55,15 +56,13 @@ private:
   static constexpr uint8_t kCmdSetInputPos = 0x00C;
   static constexpr uint8_t kCmdSetInputVel = 0x00D;
   // velocity limit
-  static constexpr uint8_t kMaxVelStepsPerSec = 180;
+  static constexpr int32_t kMaxVelStepsPerSec = 180;
 
   std::optional<CanFrame> build_normal_setpoint_frame() const noexcept;
   std::optional<CanFrame> build_safe_setpoint_frame() const noexcept;
   std::optional<CanFrame> build_controller_mode_frame() const noexcept;
   bool set_controller_mode() noexcept;
 
-  static void pack_u32(uint8_t* dst, uint32_t val) noexcept;
-  static void pack_u16(uint8_t* dst, uint16_t val) noexcept;
   static void pack_i32(uint8_t* dst, int32_t val) noexcept;
   static uint32_t unpack_u32(const uint8_t* src) noexcept;
   static int32_t unpack_i32(const uint8_t* src) noexcept;
@@ -82,7 +81,6 @@ private:
   // safety: nothing is sent before the first heartbeat and the first target
   std::atomic<bool> has_target_{false};
   std::atomic<bool> heartbeat_arrived_{false};
-
 
   // Explicit TX Message Members
   std::shared_ptr<PeriodicMessage> setpoint_periodic_;
