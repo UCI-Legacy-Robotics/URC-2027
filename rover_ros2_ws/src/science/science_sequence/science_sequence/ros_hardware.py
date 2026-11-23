@@ -1,6 +1,6 @@
 """Send commands to the embedded team's science driver and wait for its replies."""
 
-from threading import Event
+from threading import Event, Lock
 from time import monotonic
 
 from action_msgs.msg import GoalStatus
@@ -9,7 +9,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from science_interfaces.action import ScienceCommand
 from std_srvs.srv import Trigger
 
-from .hardware import HardwareError, HardwareUnsafe, Reply, SequenceCancelled
+from .hardware import AugerJam, HardwareError, HardwareUnsafe, Reply, SequenceCancelled
 
 
 class RosHardware:
@@ -22,6 +22,7 @@ class RosHardware:
             Trigger, "science/hardware/stop", callback_group=self._group
         )
         self._cancel_timeout = cancel_timeout
+        self._dispatch = Lock()
 
         self._uncertain = False
 
@@ -40,8 +41,10 @@ class RosHardware:
         if not self._stop.wait_for_service(timeout_sec=timeout):
             raise HardwareUnsafe("Cannot reach the hardware stop service")
         try:
+            with self._dispatch:
+                future = self._stop.call_async(Trigger.Request())
             response = self._wait(
-                self._stop.call_async(Trigger.Request()),
+                future,
                 max(0.001, deadline - monotonic()),
             )
         except Exception as error:
@@ -86,11 +89,12 @@ class RosHardware:
                 raise SequenceCancelled()
             if monotonic() >= deadline:
                 raise HardwareError("Cannot reach the embedded science driver")
-        if cancelled():
-            raise SequenceCancelled()
-        goal_future = self._client.send_goal_async(
-            ScienceCommand.Goal(command=command, value=value)
-        )
+        with self._dispatch:
+            if cancelled():
+                raise SequenceCancelled()
+            goal_future = self._client.send_goal_async(
+                ScienceCommand.Goal(command=command, value=value)
+            )
         try:
             cancel_deadline = None
             while not goal_future.done():
@@ -119,6 +123,11 @@ class RosHardware:
             wrapped = result_future.result()
             reply = wrapped.result
             if wrapped.status != GoalStatus.STATUS_SUCCEEDED or not reply.success:
+                if wrapped.status == GoalStatus.STATUS_ABORTED and reply.fault_code == "AUGER_JAM":
+                    raise AugerJam(
+                        reply.message or "Auger jam",
+                        elevator_position_valid=reply.elevator_position_valid,
+                    )
                 raise HardwareError(f"{command} failed: {reply.message}")
             return Reply(reply.actual_value, tuple(reply.readings), tuple(reply.units))
         except HardwareError:

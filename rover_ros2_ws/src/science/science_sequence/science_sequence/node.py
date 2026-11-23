@@ -12,6 +12,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.signals import SignalHandlerOptions
 from science_interfaces.action import ScienceSequence
 from science_interfaces.msg import ScienceState
+from std_srvs.srv import Trigger
 
 from .controller import Config, ScienceController
 from .hardware import Cancellation
@@ -19,8 +20,8 @@ from .ros_hardware import RosHardware
 
 
 class ScienceSequencer(Node):
-    def __init__(self):
-        super().__init__("science_sequencer")
+    def __init__(self, **node_options):
+        super().__init__("science_sequencer", **node_options)
         self.declare_parameter("hardware_calibrated", False)
         parameters = {}
         for field in fields(Config):
@@ -35,6 +36,7 @@ class ScienceSequencer(Node):
             )
         self.controller = ScienceController(RosHardware(self), config)
         self._reservation = Lock()
+        self._status_lock = Lock()
         self._active = False
         self._accepting = True
         self._idle = Event()
@@ -56,8 +58,11 @@ class ScienceSequencer(Node):
             cancel_callback=self._cancel,
             callback_group=self._group,
         )
+        self._stop_service = self.create_service(
+            Trigger, "science/emergency_stop", self._emergency_stop, callback_group=self._group,
+        )
         self._timer = self.create_timer(
-            0.5, self._publish_state, callback_group=self._group
+            0.5, lambda: self._publish_state(), callback_group=self._group
         )
         self._publish_state()
 
@@ -65,8 +70,19 @@ class ScienceSequencer(Node):
     def _message(state):
         return ScienceState(**asdict(state))
 
-    def _publish_state(self):
-        self._status.publish(self._message(self.controller.state))
+    def _publish_state(self, snapshot=None):
+        with self._status_lock:
+            current = self.controller.state
+            if snapshot is None or current.phase == "ESTOP":
+                snapshot = current
+            message = self._message(snapshot)
+            self._status.publish(message)
+            return message
+
+    def _emergency_stop(self, _request, response):
+        response.success, response.message = self.controller.emergency_stop()
+        self._publish_state()
+        return response
 
     def _goal(self, request):
         # Mark this request as active now so another request cannot start before it runs.
@@ -88,8 +104,7 @@ class ScienceSequencer(Node):
 
     def _execute(self, goal_handle):
         def feedback(state):
-            message = self._message(state)
-            self._status.publish(message)
+            message = self._publish_state(state)
             if goal_handle.is_active:
                 goal_handle.publish_feedback(ScienceSequence.Feedback(state=message))
 

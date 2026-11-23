@@ -1,16 +1,10 @@
 # Science sequence and control
 
-Only have elevator, bradford, and npk sequences right now. <-- still need to add camera
-
-Bradford should have everything from lower the drill to max depth, start blender and spectrophotometer.
-everything should also have retract in case theres an error
-
-also i assumed embedded or GUI will do soemthing to let us know there's an error, so i had it as buttons to manually retract stuff like drill
-
-This package runs the Bradford and NPK sequences through ROS 2 Jazzy. It decides
-which steps can start, sends commands to the hardware drivers, waits for their
-replies, and reports progress and measurements. It also handles cancellation,
-retraction, and whether science is ready for the rover to drive.
+The science sequencer runs the elevator, Bradford, and NPK operations through
+ROS 2 Jazzy. The operator requests each Bradford stage, then requests retraction
+and blending separately. The sequencer checks whether each request can start,
+waits for the embedded driver to confirm what happened, and reports progress,
+faults, and readings for the operator to use. Camera capture is future work.
 
 ## Build and run
 
@@ -20,16 +14,63 @@ On Ubuntu 24.04 with ROS 2 Jazzy, from `rover_ros2_ws/`:
 rosdep install --from-paths src --ignore-src -y
 colcon build --symlink-install --packages-up-to science_sequence
 source install/setup.bash
-ros2 run science_sequence sequencer --ros-args --params-file <calibrated.yaml>
+ros2 run science_sequence sequencer --ros-args --params-file /path/to/calibrated.yaml
 ```
 
-Set the fields from `Config` in `controller.py` in your ROS parameter file, and
-set `hardware_calibrated: true` after entering the measured values. The defaults
-are placeholders. Setting the flag does not calibrate anything by itself.
+Put the measured values under `science_sequencer.ros__parameters` in the ROS
+parameter file. The defaults in `Config` are example values. Set
+`hardware_calibrated: true` once the hardware values are confirmed, then
+restart the node to load them.
 
-Travel targets are measured from each platform's home position. For example,
-`ten_cm_steps` includes the travel through the air before the drill touches soil,
-as well as the travel into the soil. Restart the node after changing parameters.
+### What to record during individual parts testing
+
+Use the bench team's controls for the individual components. The sequencer's
+`home` action combines several mechanisms, so save it for integrated testing.
+
+| Part | What to record | Where it goes |
+| --- | --- | --- |
+| Bradford elevator | How the driver confirms home and that both sides reached the target. Record the step counts for near ground, 10 cm below the soil surface, and maximum depth. Count the full travel from home, including the air gap before the auger touches soil. | `near_ground_steps`, `ten_cm_steps`, `max_depth_steps`, and the driver's completion report. |
+| NPK platform and probe | How the driver confirms home and the measuring position. Record the travel from NPK home and the order and units of the three readings. | `npk_lower_steps` and the `npk_read` result. |
+| Auger, hatch, cache, and blender lid | Confirm which physical state each command produces and what tells the driver it finished. Ask what the encoder measures and whether elevator position stays valid if the auger jams. | Driver command mapping. `AUGER_JAM` and `elevator_position_valid` are provisional until that feedback is agreed. |
+| Blender, pump, carousel, and spectrophotometer | Record the mix time, the pump time for the intended dose, the first cuvette position and slot spacing, the absorbance result and unit, and any time the instrument needs to settle before reading. | `blender_seconds` and `pump_seconds`. The current four-slot, 90° indexing and immediate read after pumping are assumptions to check. Different indexing or a required settling delay needs a code or driver change. |
+| Completion and stop | Record normal completion and stop times, the precision of reported positions, and how the driver confirms that motion and pending work have stopped. | Review `command_timeout`, `recovery_timeout`, and `position_tolerance` against the driver behavior. The position tolerance is in motor steps. |
+
+Keep the recovery decisions open for the combined test. In particular, confirm
+whether the drill can retract with the auger stopped and when the hatch can open.
+Reverse auger motion is commented out. A forward jog after failed retraction
+still needs an agreed direction, travel limit, and position confirmation.
+
+## Run the workflow in simulation
+
+From `rover_ros2_ws/`, with ROS 2 Jazzy sourced:
+
+```bash
+colcon build --symlink-install --packages-up-to science_sequence
+source install/setup.bash
+python3 -m unittest discover -s src/science/science_sequence/test -v
+```
+
+The ROS tests start the production sequencer, an operator action client, and a
+simulated embedded driver in the same unique namespace. The simulated driver
+returns example sensor readings and can hold or fail a drill move on demand.
+The tests check action feedback, the result payloads, and `/science/state`.
+
+| Scenario | Expected result |
+| --- | --- |
+| Complete Bradford and NPK | Publish absorbance and N/P/K results. Reject `ready_to_drive` while NPK is lowered. After retraction, stow the bottom platform and publish drive readiness. |
+| Cancel the Bradford approach from `BASE` | Cancel the in-flight driver goal, confirm a stop, return to `BASE`, and invalidate the sample. |
+| Simulated auger jam after hatch closure | Confirm a stop, reopen the hatch, then retract to `NEAR_GROUND` if elevator position is valid. |
+| Emergency stop during descent | Confirm the stop, publish `ESTOP`, and block further motion requests. |
+| Drill move fails and stop cannot be confirmed | Publish `FAULT` and reject retraction without commanding further travel. |
+
+For a controller-only run from `rover_ros2_ws/`, use:
+
+```bash
+PYTHONPATH=src/science/science_sequence python3 -m unittest discover -s src/science/science_sequence/test -p test_controller.py -v
+```
+
+This also covers a simulated drill failure followed by a fresh collection,
+measurement, and stow. Both suites use example depths and readings.
 
 ## Operation requests
 
@@ -40,7 +81,10 @@ One operation runs at a time; invalid or overlapping requests are rejected.
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `home`              | Start a new cycle. Stop activity, return NPK and the bottom platform to their home positions, and align the first cuvette. Close the cache and blender lid, open the hatch, and reset the cycle status. Samples and cuvettes must be prepared separately.                                                   |
 | `lower_platform`    | After homing, with the bottom platform at `BASE` and NPK raised, lower to `NEAR_GROUND`. If lowering fails or is cancelled, return to base and wait for the operator to try again.                                                                                                                          |
-| `collect_bradford`  | With the platform near ground, NPK raised, and no completed sample: spin up the auger, lower to 10 cm, close the hatch, and open the cache and blender lid. Lower to maximum depth, mark collection complete, then stop the auger and open the hatch. The controller acknowledges collection automatically. |
+| `approach_bradford` | With the platform at `BASE` or `NEAR_GROUND` and NPK raised, spin up the auger, lower to 10 cm, and stop the auger at the checkpoint. |
+| `drill_bradford` | At 10 cm, close the hatch, open the cache and blender lid, spin up the auger, lower to maximum depth, and stop the auger. |
+| `finish_bradford` | At maximum depth, confirm the auger is stopped, open the hatch, and mark collection complete. |
+| `collect_bradford` | Run the combined Bradford sequence from `NEAR_GROUND`. Available for existing callers that start collection in one request. |
 | `retract_bradford`  | With NPK raised and the bottom platform at a known lowered position, stop activity and confirm the stop. Close the cache, raise the platform to near ground, and open the hatch.                                                                                                                            |
 | `blend_and_measure` | After collection, with the first unused cuvette aligned, close the blender lid and mix for `blender_seconds`. Stop the blender, pump for `pump_seconds`, and take an absorbance reading.                                                                                                                    |
 | `next_cuvette`      | After mixing and using the current cuvette, turn 90 degrees to the next one, pump, and measure. There are four positions. The controller does not return to a used cuvette or refill one that might already contain liquid.                                                                                 |
@@ -59,26 +103,18 @@ For example, finishing collection does not automatically start blending or
 retraction. To cancel a running action, the caller uses its accepted goal handle's
 `cancel_goal_async()` method.
 
-### Connecting a stop and retract button
+### Operator stop controls
 
-The operator uses the GUI to spot problems, such as a drill that has stopped
-moving. The GUI team can connect a stop and retract button to these requests:
+| Control | ROS request | Behavior |
+| --- | --- | --- |
+| Stop and retract during Bradford | Cancel the accepted action goal | Wait for the driver to stop. An approach launched from `BASE` returns to `BASE`. An approach launched from `NEAR_GROUND` or a later Bradford operation returns to `NEAR_GROUND`. Wait for the final result and check `state.fault` and `state.platform_position`. |
+| Retract at a checkpoint | `retract_bradford` action goal | Stop activity, close the cache, retract to `NEAR_GROUND`, and open the hatch. |
+| Sequencer emergency stop | `/science/emergency_stop` with `std_srvs/srv/Trigger` | Ask the driver to stop and latch the sequencer in `ESTOP`. Available during any operation, during recovery, and while idle. Normal goals are blocked, including `home`. The response reports whether the driver confirmed the stop. |
 
-- While `collect_bradford` is active, cancel its accepted action goal. The
-  cancellation handler stops the hardware, closes cache, returns the bottom
-  platform to `NEAR_GROUND`, and opens the hatch. Wait for the final result and
-  check `state.fault` and `state.platform_position`. An accepted cancel request
-  does not mean the drill has finished retracting. Wait for that result before
-  sending another request.
-- When no science operation is active and the platform is deployed, send
-  `retract_bradford` to `/science/sequence`. This also stops activity before
-  retraction. Read the result and state for completion.
-
-This returns to near-ground height, not travel height. It does not retry or
-resume drilling. Cancelling initial `lower_platform` instead returns to `BASE`,
-as specified for that operation. NPK and mixing have their own cancellation
-behavior, so the caller must check which operation is running. The GUI team
-handles the button and keeps track of its active action goal.
+After a sequencer emergency stop, check the hardware and clear any physical stop
+before restarting the node and explicitly requesting `home`. The ROS service
+depends on the driver and ROS transport. The physical bench E-stop is handled by
+the hardware team.
 
 Action feedback and `/science/state` report the current step, platform positions,
 whether collection and retraction finished, faults, the cuvette number, and drive
@@ -113,6 +149,13 @@ The driver should report success only after completing the requested change.
 For position and on/off commands, return the confirmed value in `actual_value`.
 Sensor readings must be finite numbers with units.
 
+For simulation, the encoder hook is an aborted result with `fault_code` set to
+`AUGER_JAM`. Set `elevator_position_valid` only if the driver can still verify
+the elevator position after the jam. This is a placeholder for embedded's fault
+report, including which encoder provides it. The embedded driver is responsible
+for stopping the auger when it detects a jam. The sequencer then requests a
+confirmed stop from the stop service.
+
 The stop service must work even while another command is waiting. It must stop
 activity, cancel pending work so it cannot start later, and keep enough motor
 holding torque to support the platforms. When the driver reports a command as
@@ -120,11 +163,15 @@ cancelled or aborted, that command must no longer be running.
 
 ## Recovery and remaining integration
 
-Cancel and ordinary failures first confirm a stop, then attempt recovery:
-Bradford returns near ground with cache closed and hatch reopened; NPK homes its
-probe; blender/pump/measurement stops without automatic refill. Interrupted
-carousel motion requires rehoming. Recovery ignores the original cancellation
-request so it can finish returning the mechanism.
+| Event | Sequencer behavior |
+| --- | --- |
+| Operator cancels Bradford | Confirm a stop, then return to the checkpoint specified above. |
+| Auger jam | Confirm a stop and open the hatch if closed or its closure was requested. With verified elevator position, attempt the same return as cancellation. If the position is unknown, report `FAULT`. Reverse auger motion is commented out pending hardware testing. |
+| Other fault in the staged Bradford sequence | Confirm a stop and report `FAULT` while the per-fault policy is open. |
+| Retraction fails | Stop again and report `FAULT`. Keep operator-requested forward movement pending confirmation of the allowed direction, travel limits, and valid position feedback. |
+| NPK or analysis cancellation | Home the NPK probe, or stop blender/pump/measurement without automatic refill. Interrupted carousel motion requires rehoming. |
+
+The sequencer emergency stop can also interrupt recovery.
 
 If recovery fails, or we cannot tell whether a command is still running, the
 controller stays in `FAULT`, marks positions unknown, and blocks normal requests.

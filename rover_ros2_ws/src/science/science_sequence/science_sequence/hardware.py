@@ -13,6 +13,14 @@ class HardwareUnsafe(HardwareError):
     """We cannot confirm the hardware stopped. Do not start a recovery movement."""
 
 
+class AugerJam(HardwareError):
+    """The driver detected a jam and halted the active command."""
+
+    def __init__(self, message, *, elevator_position_valid=False):
+        super().__init__(message)
+        self.elevator_position_valid = elevator_position_valid
+
+
 class SequenceCancelled(Exception):
     """The operator requested cancellation."""
 

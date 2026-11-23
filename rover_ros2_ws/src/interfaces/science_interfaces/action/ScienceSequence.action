@@ -1,4 +1,5 @@
-# home, lower_platform, collect_bradford, retract_bradford,
+# home, lower_platform, approach_bradford, drill_bradford, finish_bradford,
+# collect_bradford (combined), retract_bradford,
 # blend_and_measure, next_cuvette, measure_npk, retract_npk, ready_to_drive
 string command
 ---

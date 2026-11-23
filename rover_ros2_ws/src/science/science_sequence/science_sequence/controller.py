@@ -7,6 +7,7 @@ from time import monotonic
 from typing import Callable
 
 from .hardware import (
+    AugerJam,
     Cancellation,
     Hardware,
     HardwareError,
@@ -17,7 +18,7 @@ from .hardware import (
 
 @dataclass(frozen=True)
 class Config:
-    # Example settings. Replace these with measured travel and timing values.
+    # Example settings. Use the measured travel, timings, and tolerances in the ROS parameters.
     near_ground_steps: int = 1000
     ten_cm_steps: int = 2000
     max_depth_steps: int = 3000
@@ -87,6 +88,12 @@ class Result:
 
 
 class ScienceController:
+    BRADFORD_ENTRY_POSITIONS = {
+        "approach_bradford": {"BASE", "NEAR_GROUND"},
+        "drill_bradford": {"TEN_CM"},
+        "finish_bradford": {"MAX_DEPTH"},
+    }
+    BRADFORD_STEPS = frozenset(BRADFORD_ENTRY_POSITIONS)
     COMMANDS = frozenset(
         {
             "home",
@@ -99,7 +106,7 @@ class ScienceController:
             "retract_npk",
             "ready_to_drive",
         }
-    )
+    ) | BRADFORD_STEPS
 
     def __init__(self, hardware: Hardware, config: Config | None = None):
         self.hardware = hardware
@@ -107,10 +114,13 @@ class ScienceController:
         self._state = State()
         self._state_lock = Lock()
         self._operation_lock = Lock()
+        self._stopped = Event()
+        self._stop_lock = Lock()
         self._feedback: Callable[[State], None] = lambda state: None
         self._cancel = Cancellation()
         self._blended = False
         self._cuvette_used = False
+        self._hatch_may_be_closed = True
 
     @property
     def state(self):
@@ -119,14 +129,38 @@ class ScienceController:
 
     def _update(self, **changes):
         with self._state_lock:
+            if self._stopped.is_set():
+                return
             self._state = replace(self._state, **changes)
             snapshot = self._state
         self._feedback(snapshot)
+
+    def emergency_stop(self):
+        """Latch the sequencer and ask the driver to stop without starting recovery."""
+        with self._stop_lock:
+            with self._state_lock:
+                self._stopped.set()
+                self._state = State(
+                    phase="ESTOP", fault=True, detail="Waiting for driver stop confirmation"
+                )
+            try:
+                self.hardware.stop(self.config.recovery_timeout)
+            except Exception as error:
+                success = False
+                detail = f"Emergency stop requested; driver stop unconfirmed: {error}"
+            else:
+                success = True
+                detail = "Driver confirmed stop; sequencer is latched"
+            with self._state_lock:
+                self._state = replace(self._state, detail=detail)
+            return success, detail
 
     def rejection_reason(self, command: str) -> str:
         s = self.state
         if command not in self.COMMANDS:
             return f"Unknown command: {command}"
+        if self._stopped.is_set():
+            return "Emergency stop is latched"
         if command == "home":
             return ""
         if s.fault:
@@ -155,6 +189,14 @@ class ScienceController:
                     "Collection needs the platform near ground, NPK raised, and no completed sample"
                 )
             )
+        if command in self.BRADFORD_STEPS:
+            if (
+                s.platform_position in self.BRADFORD_ENTRY_POSITIONS[command]
+                and s.npk_position == "HOME"
+                and not s.soil_collected
+            ):
+                return ""
+            return f"{command} requires the preceding Bradford checkpoint and NPK raised"
         if command == "retract_bradford":
             return (
                 ""
@@ -226,6 +268,7 @@ class ScienceController:
             )
         self._cancel = cancellation or Cancellation()
         self._feedback = feedback or (lambda state: None)
+        start_position = self.state.platform_position
         try:
             reason = self.rejection_reason(command)
             if reason:
@@ -240,17 +283,22 @@ class ScienceController:
                 ready_to_drive=command == "ready_to_drive",
                 detail=f"{command} completed",
             )
-            return Result(
-                True, False, f"{command} completed", self.state, names, values, units
-            )
+            completed = self.state
+            if completed.phase == "ESTOP":
+                return Result(False, False, completed.detail, completed)
+            return Result(True, False, f"{command} completed", completed, names, values, units)
         except (HardwareError, SequenceCancelled) as error:
+            if self._stopped.is_set():
+                return Result(False, False, self.state.detail, self.state)
             cancelled = isinstance(error, SequenceCancelled)
             message = "Cancelled by operator" if cancelled else str(error)
-            self._recover(command, message, unsafe=isinstance(error, HardwareUnsafe))
+            self._recover(command, message, failure=error, start_position=start_position)
             return Result(False, cancelled, self.state.detail, self.state)
         except Exception as error:
             # Try to stop the hardware even if an unexpected software error occurs.
-            self._recover(command, f"Unexpected failure: {error}", unsafe=True)
+            self._recover(
+                command, f"Unexpected failure: {error}", failure=HardwareUnsafe(str(error))
+            )
             return Result(False, False, self.state.detail, self.state)
         finally:
             self._cancel.close()
@@ -258,17 +306,22 @@ class ScienceController:
             self._operation_lock.release()
 
     def _check_cancel(self):
-        if self._cancel():
+        if self._stopped.is_set() or self._cancel():
             raise SequenceCancelled()
 
     def _command(self, command, value=0.0, *, recovery=False):
-        if not recovery:
-            self._check_cancel()
+        def cancelled():
+            return self._stopped.is_set() or (not recovery and self._cancel())
+
+        if cancelled():
+            raise SequenceCancelled()
+        if command == "hatch" and value == 0:
+            self._hatch_may_be_closed = True
         self._update(detail=f"Requesting {command}({value})")
         reply = self.hardware.execute(
             command,
             float(value),
-            (lambda: False) if recovery else self._cancel,
+            cancelled,
             self.config.recovery_timeout if recovery else self.config.command_timeout,
         )
         # Check that the driver actually reached the requested position or state.
@@ -283,6 +336,8 @@ class ScienceController:
                 or abs(reply.actual_value - value) > tolerance
             ):
                 raise HardwareError(f"{command}: target was not confirmed")
+        if command == "hatch" and value == 1:
+            self._hatch_may_be_closed = False
         return reply
 
     def _platform(self, position, target, *, recovery=False):
@@ -323,13 +378,32 @@ class ScienceController:
         return (), (), ()
 
     def _collect_bradford(self):
+        self._approach_bradford(pause=False)
+        self._drill_bradford(pause=False)
+        return self._finish_bradford()
+
+    def _approach_bradford(self, *, pause=True):
         self._update(bradford_retracted=False)
-        self._command("auger", 1)  # Wait for the driver to confirm the auger has spun up.
+        self._command("auger", 1)
         self._platform("TEN_CM", self.config.ten_cm_steps)
+        if pause:
+            self._command("auger", 0)
+        return (), (), ()
+
+    def _drill_bradford(self, *, pause=True):
         self._command("hatch", 0)
         self._command("cache", 1)
         self._command("blender_lid", 1)
+        if pause:
+            self._command("auger", 1)
         self._platform("MAX_DEPTH", self.config.max_depth_steps)
+        if pause:
+            self._command("auger", 0)
+        return (), (), ()
+
+    def _finish_bradford(self):
+        self._command("auger", 0)
+        self._command("hatch", 1)
         self._update(
             phase="COLLECTION_COMPLETE",
             soil_collected=True,
@@ -337,8 +411,6 @@ class ScienceController:
         )
         self._check_cancel()
         self._update(phase="COLLECTION_ACKNOWLEDGED", detail="Collection acknowledged")
-        self._command("auger", 0)
-        self._command("hatch", 1)
         return (), (), ()
 
     def _retract_bradford(self):
@@ -410,24 +482,41 @@ class ScienceController:
         self._platform("BASE", 0)
         return (), (), ()
 
-    def _recover(self, command, message, *, unsafe=False):
+    def _recover(self, command, message, *, failure, start_position=None):
+        if self._stopped.is_set():
+            return
         self._update(phase="RECOVERING", ready_to_drive=False, detail=message)
         try:
             self.hardware.stop(self.config.recovery_timeout)
-            if unsafe:
+            if isinstance(failure, HardwareUnsafe):
                 raise HardwareUnsafe(
                     "Cannot confirm what the hardware is doing. Further movement is blocked"
                 )
-            if command == "lower_platform":
+            if isinstance(failure, AugerJam):
+                # self._command("auger", -1, recovery=True)  # Reverse pending mechanical approval.
+                if self._hatch_may_be_closed:
+                    self._command("hatch", 1, recovery=True)
+                if not failure.elevator_position_valid:
+                    raise HardwareUnsafe("The driver did not confirm elevator position after the jam")
+            elif command in self.BRADFORD_STEPS and not isinstance(failure, SequenceCancelled):
+                raise HardwareError("Bradford stopped. Check the driver fault before moving the drill")
+
+            back_to_base = command == "lower_platform" or (
+                command == "approach_bradford" and start_position == "BASE"
+            )
+            if back_to_base:
                 self._platform("BASE", 0, recovery=True)
-            elif command in {"collect_bradford", "retract_bradford", "ready_to_drive"}:
-                if command == "collect_bradford":
+            elif command in self.BRADFORD_STEPS or command in {
+                "collect_bradford", "retract_bradford", "ready_to_drive",
+            }:
+                if command in self.BRADFORD_STEPS or command == "collect_bradford":
                     self._update(soil_collected=False, bradford_retracted=False)
                 self._command("cache", 0, recovery=True)
                 self._platform(
                     "NEAR_GROUND", self.config.near_ground_steps, recovery=True
                 )
-                self._command("hatch", 1, recovery=True)
+                if not isinstance(failure, AugerJam):
+                    self._command("hatch", 1, recovery=True)
                 self._update(bradford_retracted=self.state.soil_collected)
             elif command in {"measure_npk", "retract_npk"}:
                 self._npk_home(recovery=True)
@@ -437,6 +526,8 @@ class ScienceController:
                 )
             self._update(phase="RECOVERED", detail=f"{message}; recovery finished successfully")
         except Exception as recovery_error:
+            if self._stopped.is_set():
+                return
             try:
                 self.hardware.stop(self.config.recovery_timeout)
             except Exception:
