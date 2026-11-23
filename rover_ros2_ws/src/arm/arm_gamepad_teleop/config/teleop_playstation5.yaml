@@ -7,12 +7,21 @@ arm_teleop:
     axes: [0, 1, 2, 3]
     axis_signs: [1.0, -1.0, 1.0, -1.0]
 
-    enable_button: 9         # L2 button (held to move)
-    mode_button: 6           # Options (toggle when neutral and L2 released)
-    wrist_negative_button: 13  # D-pad left
-    wrist_positive_button: 14  # D-pad right
-    yaw_positive_button: 11    # D-pad up (Cartesian yaw)
-    yaw_negative_button: 12    # D-pad down (Cartesian yaw)
+    enable_button: 9
+    mode_button: 6
+    wrist_negative_button: 13
+    wrist_positive_button: 14
+    yaw_positive_button: 11
+    yaw_negative_button: 12
+
+    # Hold L2 to retract/open; hold R2 to extend/close. Both or neither stops.
+    gripper_open_axis: 4
+    gripper_close_axis: 5
+    gripper_trigger_threshold: 0.5
+
+    gripper_open_position: 0.0
+    gripper_closed_position: 0.05
+    gripper_speed: 0.02  # m/s per finger; URDF maximum is 0.02.
 
     deadzone: 0.1
     joy_timeout: 0.5

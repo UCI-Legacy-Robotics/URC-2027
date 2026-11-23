@@ -1,0 +1,33 @@
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+moveit_simple_controller_manager:
+  controller_names:
+  - arm_controller
+  - gripper_controller
+  - solenoid_controller
+  arm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints:
+    - base_mount_to_upper_base
+    - upper_base_to_shoulder
+    - shoulder_to_elbow
+    - elbow_to_wrist
+    - wrist_to_claw
+  gripper_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints:
+    - claw_to_left_grip
+    - claw_to_right_grip
+  solenoid_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints:
+    - grip_to_solenoid
+trajectory_execution:
+  allowed_execution_duration_scaling: 1.5
+  allowed_goal_duration_margin: 2.0
+  allowed_start_tolerance: 0.01

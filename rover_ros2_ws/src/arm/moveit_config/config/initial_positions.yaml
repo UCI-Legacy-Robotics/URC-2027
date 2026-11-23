@@ -1,8 +1,0 @@
-# Default initial positions for arm's ros2_control fake system
-
-initial_positions:
-  base_mount_to_upper_base: 0
-  elbow_to_wrist: 0
-  shoulder_to_elbow: 0
-  upper_base_to_shoulder: 0
-  wrist_to_claw: 0

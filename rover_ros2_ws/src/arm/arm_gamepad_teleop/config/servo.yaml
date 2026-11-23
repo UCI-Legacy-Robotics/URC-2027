@@ -1,3 +1,4 @@
+# Arm Servo only. All three controllers still run; tools accept their own action goals.
 move_group_name: arm
 command_in_type: speed_units
 publish_period: 0.01
@@ -13,12 +14,10 @@ publish_joint_positions: true
 publish_joint_velocities: true
 publish_joint_accelerations: false
 apply_twist_commands_about_ee_frame: true
-
 scale:
-  linear: 0.2         # previously 0.1
-  rotational: 0.55    # previously 0.3
-  joint: 0.4          # previously 0.3
-  
+  linear: 0.2
+  rotational: 0.55
+  joint: 0.4
 use_smoothing: true
 smoothing_filter_plugin_name: online_signal_smoothing::ButterworthFilterPlugin
 check_collisions: true
@@ -28,7 +27,8 @@ scene_collision_proximity_threshold: 0.02
 lower_singularity_threshold: 17.0
 hard_stop_singularity_threshold: 30.0
 leaving_singularity_threshold_multiplier: 2.0
-joint_limit_margins: [0.1]
+joint_limit_margins:
+- 0.1
 halt_all_joints_in_joint_mode: true
 halt_all_joints_in_cartesian_mode: true
 is_primary_planning_scene_monitor: true

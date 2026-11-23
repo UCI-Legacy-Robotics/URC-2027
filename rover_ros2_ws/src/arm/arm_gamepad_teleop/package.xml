@@ -7,12 +7,14 @@
   <license>Apache-2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>control_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>moveit_msgs</depend>
   <exec_depend>moveit_servo</exec_depend>
   <exec_depend>joy</exec_depend>
+  <exec_depend>forward_command_controller</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
@@ -21,5 +23,6 @@
   <exec_depend>arm</exec_depend>
   <exec_depend>arm_control_config</exec_depend>
   <exec_depend>moveit_config</exec_depend>
+  <exec_depend>moveit_configs_utils</exec_depend>
   <export><build_type>ament_cmake</build_type></export>
 </package>

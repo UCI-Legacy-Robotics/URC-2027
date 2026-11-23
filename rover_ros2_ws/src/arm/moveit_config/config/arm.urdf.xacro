@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<robot name="arm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="use_gazebo" default="false"/>
+  <xacro:include filename="$(find arm_control_config)/models/arm.sim.urdf.xacro"/>
+</robot>

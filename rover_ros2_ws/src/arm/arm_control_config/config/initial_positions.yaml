@@ -1,0 +1,9 @@
+initial_positions:
+  base_mount_to_upper_base: 0.0
+  upper_base_to_shoulder: 0.0
+  shoulder_to_elbow: 0.0
+  elbow_to_wrist: 0.0
+  wrist_to_claw: 0.0
+  claw_to_left_grip: 0.0
+  claw_to_right_grip: 0.0
+  grip_to_solenoid: 0.0

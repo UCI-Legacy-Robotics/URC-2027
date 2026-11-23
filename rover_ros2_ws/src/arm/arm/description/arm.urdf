@@ -2,8 +2,8 @@
 <!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
-<robot
-  name="arm">
+<robot name="arm">
+  <!-- Effort and velocity limits below are SIMULATION defaults; replace with measured hardware limits. -->
 
   <link name="world"/>
 
@@ -13,7 +13,6 @@
   <origin xyz="0 0 0" rpy="0 1.57079632679 0"/>
 </joint>
 
-<!-- Removed duplicate empty base_mount link. Full link definition follows. -->
 
   <link
     name="base_mount">
@@ -40,7 +39,7 @@
           filename="package://arm/meshes/base_mount.STL" />
       </geometry>
       <material
-        name="base_mount_material">
+        name="">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -80,7 +79,7 @@
           filename="package://arm/meshes/upper_base.STL" />
       </geometry>
       <material
-        name="upper_base_material">
+        name="">
         <color
           rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
       </material>
@@ -107,6 +106,7 @@
       link="upper_base" />
     <axis
       xyz="-1 0 0" />
+    <limit effort="100.0" velocity="1.0"/>
   </joint>
   <link
     name="shoulder">
@@ -133,7 +133,7 @@
           filename="package://arm/meshes/shoulder.STL" />
       </geometry>
       <material
-        name="shoulder_material">
+        name="">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -161,10 +161,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="3.14"
-      effort="0"
-      velocity="0" />
+      lower="-3.141592653589793"
+      upper="3.141592653589793"
+      effort="100.0"
+      velocity="1.0" />
   </joint>
   <link
     name="elbow">
@@ -191,7 +191,7 @@
           filename="package://arm/meshes/elbow.STL" />
       </geometry>
       <material
-        name="elbow_material">
+        name="">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -219,10 +219,10 @@
     <axis
       xyz="0 0.076985 0.99703" />
     <limit
-      lower="0"
-      upper="3.14"
-      effort="0"
-      velocity="0" />
+      lower="-3.141592653589793"
+      upper="3.141592653589793"
+      effort="100.0"
+      velocity="1.0" />
   </joint>
   <link
     name="wrist">
@@ -249,7 +249,7 @@
           filename="package://arm/meshes/wrist.STL" />
       </geometry>
       <material
-        name="wrist_material">
+        name="">
         <color
           rgba="1 1 1 1" />
       </material>
@@ -277,10 +277,10 @@
     <axis
       xyz="0 0.05346 0.99857" />
     <limit
-      lower="0"
-      upper="3.14"
-      effort="0"
-      velocity="0" />
+      lower="-3.141592653589793"
+      upper="3.141592653589793"
+      effort="100.0"
+      velocity="1.0" />
   </joint>
   <link
     name="claw">
@@ -307,7 +307,7 @@
           filename="package://arm/meshes/claw.STL" />
       </geometry>
       <material
-        name="claw_material">
+        name="">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -334,6 +334,7 @@
       link="claw" />
     <axis
       xyz="1 0 0" />
+    <limit effort="100.0" velocity="1.0"/>
   </joint>
   <link
     name="claw_camera">
@@ -360,7 +361,7 @@
           filename="package://arm/meshes/claw_camera.STL" />
       </geometry>
       <material
-        name="claw_camera_material">
+        name="">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -385,6 +386,8 @@
       link="claw" />
     <child
       link="claw_camera" />
+    <axis
+      xyz="0 0 0" />
   </joint>
   <link
     name="left_gripper">
@@ -411,7 +414,7 @@
           filename="package://arm/meshes/left_gripper.STL" />
       </geometry>
       <material
-        name="left_gripper_material">
+        name="">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -441,8 +444,8 @@
     <limit
       lower="0"
       upper="0.05"
-      effort="0"
-      velocity="0" />
+      effort="40.0"
+      velocity="0.02" />
   </joint>
   <link
     name="solenoid">
@@ -469,7 +472,7 @@
           filename="package://arm/meshes/solenoid.STL" />
       </geometry>
       <material
-        name="solenoid_material">
+        name="">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -499,8 +502,8 @@
     <limit
       lower="0"
       upper="0.015"
-      effort="0"
-      velocity="0" />
+      effort="20.0"
+      velocity="0.05" />
   </joint>
   <link
     name="right_gripper">
@@ -527,7 +530,7 @@
           filename="package://arm/meshes/right_gripper.STL" />
       </geometry>
       <material
-        name="right_gripper_material">
+        name="">
         <color
           rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
       </material>
@@ -557,7 +560,7 @@
     <limit
       lower="0"
       upper="0.05"
-      effort="0"
-      velocity="0" />
+      effort="40.0"
+      velocity="0.02" />
   </joint>
 </robot>
