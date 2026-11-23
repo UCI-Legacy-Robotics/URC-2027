@@ -1,3 +1,45 @@
+# Gripper endpoint and release correction — 2026-11-23
+
+Follow-up to `5316a2a` on `codex/arm/fix-velocity-gripper`.
+
+Reproduced in the old production helper: at q=0.0002 m an opening command is
+-0.02 m/s, so one 20 ms update crosses the hard lower limit. At the upper endpoint,
+a 0.1 mm feedback fluctuation restarts full speed while the trigger remains held.
+The previous state callback also invalidates both fingers on an arm-only message.
+These are reproducible code defects; they do not prove the user's installed
+Gazebo/DART version is the cause of every reported motion after release.
+
+Changes: cruise at 0.015 m/s, retain 1 mm endpoint margins, taper over 10 mm,
+latch each finger's endpoint until the requested direction changes, send release
+commands directly from the joystick callback, keep only the latest queued Joy,
+and track feedback/freshness separately for each finger. Velocity interfaces,
+URDF hard limits, and the arm's joystick mapping are unchanged.
+
+Passed locally:
+
+- Native production-helper tests, compiled as C++17 with warnings as errors and
+  AddressSanitizer/UndefinedBehaviorSanitizer. LeakSanitizer was disabled because
+  it cannot run under this environment's tracing; other sanitizer checks passed.
+- Release/conflicting-trigger stops, direct reversal even from outside the range,
+  independent endpoint latches, autorepeat and feedback jitter, stale/malformed
+  input, partial feedback, individual finger expiration, and frozen feedback near
+  both endpoints.
+- Twenty open/close cycles with 80 ms sampled feedback and 50 Hz commands stayed
+  inside the guarded travel and stopped at both ends. This uses kinematic
+  integration, not Gazebo physics.
+- Real mock/Gazebo Xacro/configuration checks, Python syntax, nine existing
+  pipeline regressions, and `git diff --check`.
+
+Added a CTest ROS integration test that launches the actual `arm_teleop`
+executable, injects Joy/JointState messages, and observes gripper commands. It
+covers release, reversal, endpoints, partial feedback, and both watchdogs. The
+existing Jazzy CI job runs it via `colcon test`; it was NOT run locally because
+this environment has no ROS/Gazebo runtime. No new Gazebo or controller-version
+verification is claimed. Fully restart simulation after rebuilding and test both
+endpoints, reversal, and mid-travel release on the actual PS5 controller.
+
+---
+
 # Velocity gripper correction — 2026-11-23
 
 Based on `aidan/arm/teleop` at `33bf4abf058b67af2a9d8c185f704bba78955fe7`.

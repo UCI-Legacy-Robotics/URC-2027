@@ -154,7 +154,12 @@ def validate(model):
             assert len(trigger_axes) == 2 and min(trigger_axes) >= 0, file
             assert not trigger_axes.intersection(values['axes']), 'Triggers overlap arm axes'
             assert 0 <= values['gripper_open_position'] < values['gripper_closed_position'] <= 0.03, file
-            assert 0 < values['gripper_speed'] <= 0.02, file
+            assert 0 < values['gripper_speed'] <= 0.018, file
+            assert 0.001 <= values['gripper_limit_margin'], file
+            assert 2 * values['gripper_limit_margin'] + 0.0002 < (
+                values['gripper_closed_position'] - values['gripper_open_position']), file
+            assert values['gripper_slowdown_distance'] >= (
+                values['gripper_speed'] * (values['joy_timeout'] + 0.02)), file
 
 
 def main():

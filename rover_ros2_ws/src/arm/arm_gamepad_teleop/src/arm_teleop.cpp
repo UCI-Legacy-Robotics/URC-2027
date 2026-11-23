@@ -51,7 +51,9 @@ public:
 
     gripper_open_position_ = declare_parameter("gripper_open_position", 0.0);
     gripper_closed_position_ = declare_parameter("gripper_closed_position", 0.03);
-    gripper_speed_ = declare_parameter("gripper_speed", 0.02);
+    gripper_speed_ = declare_parameter("gripper_speed", 0.015);
+    gripper_limit_margin_ = declare_parameter("gripper_limit_margin", 0.001);
+    gripper_slowdown_distance_ = declare_parameter("gripper_slowdown_distance", 0.01);
 
     deadzone_ = declare_parameter("deadzone", 0.1);
     timeout_ = declare_parameter("joy_timeout", 0.5);
@@ -67,13 +69,19 @@ public:
       throw std::runtime_error("Invalid arm teleop configuration");
     }
 
+    // The taper must leave enough travel for a whole feedback timeout plus
+    // one timer period; otherwise a frozen near-limit sample can drive past it.
     if (gripper_enabled_ && (gripper_open_axis_ < 0 || gripper_close_axis_ < 0 ||
         gripper_open_axis_ == gripper_close_axis_ || !std::isfinite(gripper_trigger_threshold_) ||
         gripper_trigger_threshold_ <= 0.0 || gripper_trigger_threshold_ >= 1.0 ||
         !std::isfinite(gripper_open_position_) || !std::isfinite(gripper_closed_position_) ||
         gripper_open_position_ < 0.0 || gripper_closed_position_ > 0.05 ||
         gripper_open_position_ >= gripper_closed_position_ || !std::isfinite(gripper_speed_) ||
-        gripper_speed_ <= 0.0 || gripper_speed_ > 0.02)) {
+        gripper_speed_ <= 0.0 || gripper_speed_ > 0.018 ||
+        !std::isfinite(gripper_limit_margin_) || gripper_limit_margin_ < 0.001 ||
+        2 * gripper_limit_margin_ + 0.0002 >= gripper_closed_position_ - gripper_open_position_ ||
+        !std::isfinite(gripper_slowdown_distance_) ||
+        gripper_slowdown_distance_ < gripper_speed_ * (timeout_ + 0.02))) {
       throw std::runtime_error("Invalid gripper configuration");
     }
 
@@ -104,7 +112,7 @@ public:
         [this](sensor_msgs::msg::JointState::ConstSharedPtr msg) { read_gripper_state(*msg); });
 
     joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
-        "/joy", rclcpp::SensorDataQoS(),
+        "/joy", rclcpp::SensorDataQoS().keep_last(1),
         [this](sensor_msgs::msg::Joy::ConstSharedPtr msg) { read_joystick(*msg); });
 
     timer_ = create_wall_timer(20ms, [this]() { update(); });
@@ -140,10 +148,9 @@ private:
   double gripper_open_position_;
   double gripper_closed_position_;
   double gripper_speed_;
-  const std::array<std::string, 2> gripper_joints_{"claw_to_left_grip", "claw_to_right_grip"};
-  std::array<double, 2> gripper_positions_{};
-  bool have_gripper_state_ = false;
-  Clock::time_point last_gripper_state_{};
+  double gripper_limit_margin_;
+  double gripper_slowdown_distance_;
+  GripperFeedback gripper_feedback_;
 
   double deadzone_;
   double timeout_;
@@ -219,18 +226,7 @@ private:
 
   void read_gripper_state(const sensor_msgs::msg::JointState &state)
   {
-    have_gripper_state_ = false;
-    for (size_t i = 0; i < gripper_joints_.size(); ++i) {
-      const auto joint = std::find(state.name.begin(), state.name.end(), gripper_joints_[i]);
-      const auto index = static_cast<size_t>(joint - state.name.begin());
-      if (joint == state.name.end() || index >= state.position.size() ||
-          !std::isfinite(state.position[index])) {
-        return;
-      }
-      gripper_positions_[i] = state.position[index];
-    }
-    last_gripper_state_ = Clock::now();
-    have_gripper_state_ = true;
+    gripper_feedback_.update(state.name, state.position, Clock::now());
   }
 
   void publish_gripper_command(bool fresh_input, Clock::time_point time)
@@ -238,10 +234,9 @@ private:
     if (!gripper_enabled_) {
       return;
     }
-    const bool fresh_state = have_gripper_state_ &&
-        std::chrono::duration<double>(time - last_gripper_state_).count() <= timeout_;
-    const auto velocities = gripper_control_.command(gripper_positions_, fresh_input, fresh_state,
-        gripper_open_position_, gripper_closed_position_, gripper_speed_);
+    const auto velocities = gripper_control_.command(gripper_feedback_.positions(), fresh_input,
+        gripper_feedback_.fresh(time, timeout_), gripper_open_position_, gripper_closed_position_,
+        gripper_speed_, gripper_limit_margin_, gripper_slowdown_distance_);
     std_msgs::msg::Float64MultiArray command;
     command.data.assign(velocities.begin(), velocities.end());
     gripper_publisher_->publish(command);
@@ -254,6 +249,7 @@ private:
       armed_ = false;
 
       gripper_control_.stop();
+      publish_gripper_command(false, Clock::now());
 
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
                            "Invalid /joy message. Check controller indices.");
@@ -276,6 +272,9 @@ private:
     if (gripper_enabled_) {
       gripper_control_.read_triggers(joy.axes[gripper_open_axis_], joy.axes[gripper_close_axis_],
                                      gripper_trigger_threshold_);
+      // Release/reversal reaches the forwarding controller without waiting for
+      // the next 50 Hz timer tick. The timer still sends zeros during input loss.
+      publish_gripper_command(true, received);
     }
 
     // Preserve existing arm joystick mapping.

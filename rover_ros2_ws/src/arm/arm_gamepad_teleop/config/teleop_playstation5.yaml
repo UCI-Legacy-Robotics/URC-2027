@@ -22,7 +22,9 @@ arm_teleop:
 
     gripper_open_position: 0.0
     gripper_closed_position: 0.03  # Existing collision-free partially_closed preset; 0.05 intersects.
-    gripper_speed: 0.02  # m/s per finger; URDF maximum is 0.02.
+    gripper_speed: 0.015  # Leave headroom below Gazebo's 0.02 m/s velocity limit.
+    gripper_limit_margin: 0.001  # Stop 1 mm inside each configured endpoint.
+    gripper_slowdown_distance: 0.01  # Taper over 10 mm, covering the feedback timeout.
 
     deadzone: 0.1
     joy_timeout: 0.5

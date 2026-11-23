@@ -56,12 +56,28 @@ retain their arm mappings, with gripper control disabled until dedicated trigger
 indices are configured. Enabling overlapping arm and trigger axes is rejected.
 A disabled gripper does not publish commands.
 
-The gripper commands 0.02 m/s per finger, from 0 to **0.03 m** by default. The
-30 mm closing limit matches the existing `partially_closed` named state. The
-URDF's 50 mm stroke is unchanged, but that target intersects the finger meshes;
-do not treat it as a usable teleop target. Each finger stops independently at
-its software endpoint. Sampled position checks can overshoot slightly and are
-not a hardware limit mechanism.
+The gripper cruises at **0.015 m/s** per finger, below the URDF's 0.02 m/s limit.
+It slows over the last **10 mm** and stops **1 mm inside** the configured 0–30 mm
+travel (approximately 1.1–28.9 mm with the 0.1 mm stopping tolerance). Each finger
+stops independently and stays stopped while that direction is held, even if
+feedback jitters. Reverse immediately with the opposite trigger; there is no
+extra release requirement at an endpoint. Releasing a single held trigger sends
+zero in the joystick callback as well as the regular 50 Hz command heartbeat.
+
+These defaults avoid commanding exactly at Gazebo's speed or position limits,
+where velocity-controlled joints have been reported to get stuck
+([upstream issue](https://github.com/gazebosim/gz-sim/issues/1684)). This is a
+mitigation, not a patch to the physics engine. Fully restart the simulation after
+updating, since a joint already stuck in the solver may not recover in place.
+
+`gripper_limit_margin`, `gripper_slowdown_distance`, and `gripper_speed` configure
+this behavior. Speed is capped at 0.018 m/s to keep 10% headroom, margin must be
+at least 1 mm, and slowdown distance must cover `speed * (joy_timeout + 0.02)`.
+The 30 mm closing setting comes from the existing `partially_closed` named state.
+The URDF's 50 mm stroke is unchanged, but that target intersects the finger meshes.
+Partial `/joint_states` messages are accumulated per finger with independent
+freshness checks; unrelated arm feedback cannot disable or refresh the fingers.
+These sampled software checks are not a hardware limit mechanism.
 
 Direct gripper velocity commands bypass MoveIt's trajectory collision checking.
 The 30 mm preset avoids the known finger-to-finger intersection; it does not
@@ -144,6 +160,24 @@ python3 -m unittest discover -s src/arm/tests -p 'test_*.py' -v
 colcon test --packages-select arm_gamepad_teleop
 colcon test-result --verbose
 ```
+
+The teleop package includes a native control-logic test and a ROS topic test of
+the actual executable. The latter injects synthetic Joy/JointState messages to
+check release, reversal, endpoint jitter, partial feedback, and input/state
+timeouts; it does not start Gazebo or test physics.
+
+After rebuilding, restart `teleop_sim.launch.py` and test opening/closing to each
+endpoint, immediately reversing, and releasing halfway through travel. If a
+finger still moves after release, inspect the command stream in a sourced terminal:
+
+```bash
+ros2 topic echo /gripper_controller/commands
+```
+
+Both entries should become zero on release. If they are zero while the finger
+keeps moving, the remaining problem is downstream of trigger processing (for
+example simulation physics or another command publisher). Save `/joy`,
+`/joint_states`, and this command topic together to distinguish those cases.
 
 Optional sampled geometry checks require `numpy scipy trimesh python-fcl PyYAML`:
 `python3 src/arm/tests/validate_geometry.py`. They are not exhaustive collision tests.
