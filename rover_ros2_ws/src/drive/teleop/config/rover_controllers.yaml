@@ -16,7 +16,7 @@ diff_cont:
     wheel_radius: 0.15
     position_feedback: false
     open_loop: false
-    enable_odom_tf: true
+    enable_odom_tf: false
 
     publish_rate: 50.0
     

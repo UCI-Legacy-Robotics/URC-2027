@@ -1,6 +1,7 @@
 #ifndef YELLOWJACKET_HARDWARE__YELLOWJACKET_SYSTEM_HPP_
 #define YELLOWJACKET_HARDWARE__YELLOWJACKET_SYSTEM_HPP_
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,9 @@ private:
   std::vector<double> commands_;    // Wheel rad/s.
   std::vector<double> positions_;   // Wheel radians, from encoder feedback.
   std::vector<double> velocities_;  // Wheel rad/s, from encoder feedback.
+  // Log every motor once per second, independently for read and write.
+  std::chrono::steady_clock::time_point next_read_log_{};
+  std::chrono::steady_clock::time_point next_write_log_{};
 };
 
 }  // namespace yellowjacket_hardware

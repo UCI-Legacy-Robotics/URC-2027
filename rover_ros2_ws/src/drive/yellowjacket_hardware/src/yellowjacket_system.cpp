@@ -120,17 +120,41 @@ CallbackReturn YellowjacketSystem::on_error(const rclcpp_lifecycle::State & stat
 
 return_type YellowjacketSystem::read(const rclcpp::Time &, const rclcpp::Duration &)
 {
+  const auto log_now = std::chrono::steady_clock::now();
+  const bool log_values = log_now >= next_read_log_;
+  if (log_values) {
+    next_read_log_ = log_now + std::chrono::seconds(1);
+  }
   for (std::size_t i =0; i<motors_.size() ; i++){
     positions_[i] = motors_[i]->get_pos() * TWO_PI;
-    velocities_[i] = motors_[i]->get_vel() * TWO_PI;    
+    velocities_[i] = motors_[i]->get_vel() * TWO_PI;
+    if (log_values) {
+      RCLCPP_INFO(
+        get_logger(),
+        "[read] %s (node %u): cached position=%.4f rad, cached velocity=%.4f rad/s",
+        motors_[i]->name().c_str(), static_cast<unsigned int>(motors_[i]->id()),
+        positions_[i], velocities_[i]);
+    }
   }
   return return_type::OK;
 }
 
 return_type YellowjacketSystem::write(const rclcpp::Time &, const rclcpp::Duration &)
 {
+  const auto log_now = std::chrono::steady_clock::now();
+  const bool log_values = log_now >= next_write_log_;
+  if (log_values) {
+    next_write_log_ = log_now + std::chrono::seconds(1);
+  }
   for (std::size_t i=0; i<motors_.size(); i++){
-    motors_[i]->set_duty((int)(commands_[i] / 5.3 * 32700));
+    const int32_t duty = static_cast<int32_t>(commands_[i] / 5.3 * 32700);
+    motors_[i]->set_duty(duty);
+    if (log_values) {
+      RCLCPP_INFO(
+        get_logger(), "[write] %s (node %u): command=%.4f rad/s -> set_duty(%d)",
+        motors_[i]->name().c_str(), static_cast<unsigned int>(motors_[i]->id()),
+        commands_[i], static_cast<int>(duty));
+    }
   }
   return return_type::OK;
 }

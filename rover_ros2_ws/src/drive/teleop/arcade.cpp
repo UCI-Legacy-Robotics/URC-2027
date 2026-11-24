@@ -30,7 +30,7 @@ private:
     geometry_msgs::msg::TwistStamped command;
     command.header.stamp = now();
     command.twist.linear.x = msg->axes[1] * LINEAR_SENS;
-    command.twist.angular.z = msg->axes[3] * ANGULAR_SENS;
+    command.twist.angular.z = msg->axes[2] * ANGULAR_SENS;
 
     velocity_publisher_->publish(command);
     
