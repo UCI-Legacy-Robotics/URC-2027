@@ -31,6 +31,25 @@ source install/setup.bash
 
 If a build works for you but not for others, check that every dependency is listed in the package's `package.xml`.
 
+### Third-party packages (Jetson only)
+
+Some packages aren't committed to this repo. [`rover.repos`](../../rover_ros2_ws/rover.repos) pins them to a version, and `vcs` (from `ros-dev-tools`) fetches them into `src/external/`, which is git-ignored. Right now that's only the [ZED ROS 2 wrapper](https://github.com/stereolabs/zed-ros2-wrapper). It needs the ZED SDK and CUDA, so only import it on the Jetson. On other machines, skip this and the workspace builds without it.
+
+On the Jetson, before the build steps above:
+
+```bash
+cd rover_ros2_ws
+vcs import src < rover.repos
+```
+
+The wrapper's version must match the installed ZED SDK (`v5.6.0` for SDK 5.6). When the SDK is upgraded, update the version in `rover.repos` and run `vcs import src < rover.repos` again.
+
+The wrapper is a heavy build. On the 8 GB Orin Nano, limit parallel jobs so it doesn't run out of memory:
+
+```bash
+MAKEFLAGS=-j4 colcon build --symlink-install --parallel-workers 2 --cmake-args -DCMAKE_BUILD_TYPE=Release
+```
+
 ## Workspace layout
 
 ```
@@ -43,7 +62,8 @@ rover_ros2_ws/src/
 ├── arm/              # teleop, ros2_control configs, MoveIt, autonomous pickup
 ├── science/          # science sequences, panorama
 ├── cv/               # gesture, keyboard, object detection, ArUco
-└── rover_telemetry/  # package: data to base station, controls from base station
+├── rover_telemetry/  # package: data to base station, controls from base station
+└── external/         # git-ignored: third-party packages from rover.repos
 ```
 
 Each folder under `src/` groups related ROS 2 packages. colcon finds packages recursively, so put packages directly inside the matching folder, e.g. `src/drive/drive_teleop/package.xml`. Shared messages, services, and actions go in `src/interfaces/`.

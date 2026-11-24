@@ -1,3 +1,6 @@
 build/
 install/
 log/
+
+# Third-party packages imported from rover.repos
+src/external/

@@ -1,0 +1,12 @@
+# Third-party packages fetched with vcs, not committed to this repo.
+# Only machines that need them import them (see docs/setup/rover.md):
+#   cd rover_ros2_ws && vcs import src < rover.repos
+# They land in src/external/, which is git-ignored.
+
+repositories:
+  # ZED camera driver. Needs the ZED SDK and CUDA, so only the Jetson builds it.
+  # Keep the version matched to the ZED SDK installed on the Jetson (5.6).
+  external/zed-ros2-wrapper:
+    type: git
+    url: https://github.com/stereolabs/zed-ros2-wrapper.git
+    version: v5.6.0
