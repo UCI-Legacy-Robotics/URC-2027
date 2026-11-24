@@ -10,5 +10,5 @@ target_compile_features(arcade PUBLIC cxx_std_17)
 ament_target_dependencies(arcade rclcpp geometry_msgs sensor_msgs)
 install(TARGETS arcade DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY description config launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 ament_package()

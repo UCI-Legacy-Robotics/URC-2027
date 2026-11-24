@@ -6,10 +6,10 @@ from launch_ros.actions import Node
 import xacro
 
 def generate_launch_description():
-    share = Path(get_package_share_directory('teleop'))
+    share = Path(get_package_share_directory('ros2_control_drive'))
     description = xacro.process_file(
         str(share / 'description/drive_description.urdf'),
-        mappings={'hardware_plugin': 'yellowjacket_hardware/YellowjacketSystem'}).toxml()
+        mappings={'hardware_plugin': 'mock_components/GenericSystem'}).toxml()
     return LaunchDescription([
         Node(package='robot_state_publisher', executable='robot_state_publisher',
              parameters=[{'robot_description': description, 'use_sim_time': False}],

@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>ros2_control_drive</name>
+  <version>0.0.1</version>
+  <description>Robot description, controller configuration, and mock or real six-wheel drive bringup.</description>
+  <maintainer email="robotics@uci.edu">UCI Legacy Robotics</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- The current CMakeLists.txt calls find_package(rclcpp). -->
+  <build_depend>rclcpp</build_depend>
+
+  <!-- Python imports and executables used by the launch files. -->
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+
+  <!-- Controllers and hardware plugins loaded at runtime. -->
+  <exec_depend>diff_drive_controller</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>hardware_interface</exec_depend>
+  <exec_depend>yellowjacket_hardware</exec_depend>
+
+  <!-- Meshes referenced by package://drive_description/... URIs in the URDF. -->
+  <exec_depend>drive_description</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
