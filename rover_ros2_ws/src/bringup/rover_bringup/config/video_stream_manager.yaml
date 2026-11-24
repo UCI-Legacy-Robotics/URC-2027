@@ -1,0 +1,6 @@
+# See docs/rover/video-stream-manager.md for what each parameter does.
+video_stream_manager:
+  ros__parameters:
+    rtsp_url: 'rtsp://127.0.0.1:8554/rover/front'
+    bitrate_kbps: 2000
+    fps: 30

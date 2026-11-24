@@ -1,0 +1,15 @@
+# ZED wrapper overrides for video streaming, on top of the wrapper's
+# common_stereo.yaml and zed2i.yaml. Turns off everything the video stream
+# doesn't need, to leave CPU and GPU for encoding and other subsystems.
+/**:
+  ros__parameters:
+    general:
+      grab_resolution: 'HD720'
+      grab_frame_rate: 30
+    depth:
+      # Also turns off the modules that need depth (object detection, mapping).
+      depth_mode: 'NONE'
+    pos_tracking:
+      pos_tracking_enabled: false
+    mapping:
+      mapping_enabled: false
