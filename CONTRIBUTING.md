@@ -1,6 +1,6 @@
 # Contributing to URC-2027
 
-See the [README](README.md) for setup and building.
+See [docs/](docs/README.md) for setup and building.
 
 **`main` is the tested version of the rover.** Develop, demo, and test on your branch, and merge to `main` only once your changes have been tested.
 
@@ -74,20 +74,14 @@ PR titles follow the same format.
 
 ## Before marking a PR ready
 
-From `rover_ros2_ws/`:
+Run the checks for what you changed:
 
-```bash
-colcon build --symlink-install --packages-up-to <your_package>
-colcon test --packages-select <your_package>
-colcon test-result --verbose
-```
-
-Make sure it builds, tests pass, and you've run it in sim or on hardware.
-
-For `gui/` changes, run the checks in [gui/README.md](gui/README.md#checks) instead.
+- Rover packages: [Rover setup → Checks](docs/setup/rover.md#checks). Make sure it builds, tests pass, and you've run it in sim or on hardware.
+- GUI: [frontend checks](docs/setup/gui.md#frontend-checks) and [backend checks](docs/setup/gui.md#backend-checks).
+- MAVLink dialect: regenerate on both sides, see [MAVLink dialect](docs/system/mavlink.md).
 
 ## Docs
 
-Docs live in `docs/` and are updated in the same PR as the change. Use [Mermaid](https://mermaid.js.org/) for diagrams.
+All docs live in [`docs/`](docs/README.md) and are updated in the same PR as the change. See [Writing docs](docs/README.md#writing-docs).
 
 Questions? Ask your subteam lead or in your draft PR.

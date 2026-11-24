@@ -1,0 +1,45 @@
+# GUI checks on pull requests. Repeats the git hooks (which can be skipped with
+# --no-verify) and adds the production builds.
+name: GUI
+
+on:
+  pull_request:
+    paths:
+      - 'gui/frontend/**'
+      - 'lefthook.yml'
+      - '.github/workflows/gui.yml'
+
+concurrency:
+  group: gui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: gui/frontend
+    env:
+      # Disable lefthook on the CI runner (no git hooks needed there).
+      LEFTHOOK: '0'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Uses the pnpm version pinned in package.json (packageManager).
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: gui/frontend/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: gui/frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      # electron-vite build: main, preload and the static renderer (out/renderer).
+      - run: pnpm exec electron-vite build
+      - run: pnpm build-storybook

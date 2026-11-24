@@ -1,0 +1,7 @@
+# colcon output
+/build/
+/install/
+/log/
+rover_ros2_ws/build/
+rover_ros2_ws/install/
+rover_ros2_ws/log/

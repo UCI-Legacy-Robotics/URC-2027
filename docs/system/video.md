@@ -1,0 +1,53 @@
+# Video
+
+Rover cameras reach the GUI over the 5 GHz link; the 900 MHz link only carries the controls.
+
+- All cameras run in one camera process on the rover, so frames reach the stream manager without serialization. It encodes H.264.
+- The rover's MediaMTX only sends a stream over 5 GHz while someone is watching it (on-demand pull).
+- The base MediaMTX serves the streams over WebRTC to the Electron app and to browser viewers. Video doesn't go through `gui/backend`.
+- Bitrate and resolution are commands, so only the Electron app can change them. They travel over 900 MHz as MAVLink commands (see [MAVLink dialect](mavlink.md)).
+
+```mermaid
+flowchart LR
+    subgraph ROVER["Rover (ROS 2)"]
+        subgraph CAMPROC["Camera process (component_container_mt, intra-process)"]
+            ZED["ZED 2i driver<br/>(zed-ros2-wrapper)"]
+            ARMCAM["arm camera drivers<br/>2× OV9281 (arm mission)"]
+            SCICAM["science camera node<br/>A219 (science mission)"]
+            SM["stream manager<br/>(GStreamer, H.264)"]
+        end
+        RMTX["MediaMTX (rover)"]
+        TELEM["rover_telemetry<br/>(ROS ↔ MAVLink)"]
+    end
+
+    subgraph LINKS["Radio links"]
+        R900(["900 MHz<br/>MAVLink: commands"])
+        R5G(["5 GHz<br/>video streams"])
+    end
+
+    subgraph BASE["Base station laptop (no ROS)"]
+        BACK["gui/backend<br/>(Python)"]
+        BMTX["MediaMTX (base)"]
+        APP["gui/frontend in Electron<br/>(control client)"]
+    end
+
+    VIEW["gui/frontend in a browser<br/>(read-only viewers)"]
+
+    %% Frames into the stream manager (no serialization)
+    ZED -->|"images (in-process)"| SM
+    ARMCAM -->|"images (in-process)"| SM
+    SCICAM -->|"live video frames"| SM
+
+    %% Video path
+    SM -->|"H.264"| RMTX
+    RMTX -->|"on-demand pull<br/>(only while watched)"| R5G
+    R5G --> BMTX
+    BMTX -->|"WebRTC"| APP
+    BMTX -->|"WebRTC (2.4 GHz Wi-Fi)"| VIEW
+
+    %% Control path: only the Electron app sends commands
+    APP -->|"bitrate / resolution"| BACK
+    BACK <--> R900
+    R900 <--> TELEM
+    TELEM -->|"bitrate / resolution"| SM
+```
