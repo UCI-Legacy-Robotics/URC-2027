@@ -42,11 +42,7 @@ Parameters are read at startup. Changing bitrate and resolution at runtime from 
 
 ## Run
 
-The rover's MediaMTX must be running first. It isn't part of the ROS launch. Until it's set up as a service, start it by hand with the binary and `rover/mediamtx-rover.yml` from the [video prototype](../../prototypes/video/README.md) (on the `ethnjs/comms/zed-jetson-prototype` branch):
-
-```bash
-mediamtx mediamtx-rover.yml
-```
+The rover's MediaMTX must be running first. It isn't part of the ROS launch: it runs as a systemd service that starts at boot, so it keeps running when the ROS launch restarts (see [MediaMTX service](#mediamtx-service)).
 
 **On the Jetson with the ZED** (after [importing the wrapper](../setup/rover.md#third-party-packages-jetson-only)):
 
@@ -54,7 +50,7 @@ mediamtx mediamtx-rover.yml
 ros2 launch rover_bringup video.launch.py
 ```
 
-This loads the ZED wrapper and the stream manager into one container (`/zed/camera_container`) with intra-process communication. Settings are in `rover_bringup/config/`: `zed_video.yaml` turns off depth, positional tracking and mapping, and `video_stream_manager.yaml` sets the bitrate and MediaMTX URL. Add `log_level:=debug` for more output.
+This loads the ZED wrapper and the stream manager into one container (`/zed/camera_container`) with intra-process communication. Settings are in `rover_bringup/config/`: `zed_video.yaml` turns off depth, positional tracking and mapping, and `video_stream_manager.yaml` sets the bitrate and MediaMTX URL. Add `log_level:=debug` for more output, or `intra_process:=false` to pass frames through DDS as if the nodes were separate processes (for debugging).
 
 **Without a camera**, e.g. on a laptop without the ZED SDK:
 
@@ -71,3 +67,22 @@ ros2 run video_stream_manager stream_manager_node --ros-args -r image:=/zed/zed_
 ```
 
 Then open `http://<rover IP>:8889/rover/front` in a browser.
+
+## MediaMTX service
+
+The config, systemd unit and installer are in `rover_ros2_ws/src/bringup/rover_bringup/mediamtx/`. On the Jetson:
+
+```bash
+sudo rover_ros2_ws/src/bringup/rover_bringup/mediamtx/install.sh
+```
+
+It downloads the pinned MediaMTX release (checking its SHA-256) to `/usr/local/bin/mediamtx`, copies `mediamtx.yml` to `/etc/mediamtx/`, and enables and starts the `mediamtx` service. Rerun it after editing `mediamtx.yml`. `--uninstall` removes everything it installed.
+
+```bash
+systemctl status mediamtx        # running?
+journalctl -u mediamtx -f        # logs
+sudo systemctl stop mediamtx     # stop until next boot
+sudo systemctl disable mediamtx  # don't start at boot
+```
+
+With no stream published, MediaMTX sits idle, so it can stay on while you test other subsystems.

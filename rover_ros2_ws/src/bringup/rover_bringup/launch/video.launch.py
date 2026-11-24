@@ -15,6 +15,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import ComposableNodeContainer, LoadComposableNodes
 from launch_ros.descriptions import ComposableNode
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 # The ZED launch file loads into /<camera_name>/<container_name>, so the
@@ -39,6 +40,8 @@ def _shutdown_on_container_exit(event, context):
 def generate_launch_description():
     config = PathJoinSubstitution([FindPackageShare('rover_bringup'), 'config'])
     test_source = LaunchConfiguration('test_source')
+    intra_process = LaunchConfiguration('intra_process')
+    use_intra_process = [{'use_intra_process_comms': ParameterValue(intra_process, value_type=bool)}]
 
     image_topic = PythonExpression([
         f"'{TEST_IMAGE_TOPIC}' if '", test_source, f"' == 'true' else '{ZED_IMAGE_TOPIC}'"])
@@ -49,7 +52,7 @@ def generate_launch_description():
         name='video_stream_manager',
         parameters=[PathJoinSubstitution([config, 'video_stream_manager.yaml'])],
         remappings=[('image', image_topic)],
-        extra_arguments=[{'use_intra_process_comms': True}],
+        extra_arguments=use_intra_process,
     )
 
     container = ComposableNodeContainer(
@@ -76,6 +79,7 @@ def generate_launch_description():
             'camera_model': LaunchConfiguration('camera_model'),
             'camera_name': CAMERA_NAME,
             'container_name': CONTAINER_NAME,
+            'enable_ipc': intra_process,
             'ros_params_override_path': PathJoinSubstitution([config, 'zed_video.yaml']),
             # Positional tracking is off, and odometry will come from elsewhere.
             'publish_tf': 'false',
@@ -94,7 +98,7 @@ def generate_launch_description():
             namespace='test',
             # Intra-process needs keep-last history; cam2image defaults to keep-all.
             parameters=[{'burger_mode': True, 'frequency': 30.0, 'history': 'keep_last'}],
-            extra_arguments=[{'use_intra_process_comms': True}],
+            extra_arguments=use_intra_process,
         )],
         condition=IfCondition(test_source),
     )
@@ -106,6 +110,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'test_source', default_value='false', choices=['true', 'false'],
             description='Stream test images instead of the ZED. No ZED SDK needed.'),
+        DeclareLaunchArgument(
+            'intra_process', default_value='true', choices=['true', 'false'],
+            description='Pass frames in memory between the camera nodes. false copies them '
+                        'through DDS like separate processes, for debugging.'),
         DeclareLaunchArgument(
             'log_level', default_value='info',
             description='Log level for the camera container, e.g. debug.'),
