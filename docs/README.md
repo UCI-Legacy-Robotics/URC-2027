@@ -29,7 +29,7 @@ All project docs live in this folder. READMEs next to the code only hold a one-l
 **Rover**
 
 - [Drive description](rover/drive-description.md): URDF frames, joints and known gaps
-- [Video stream manager](rover/video-stream-manager.md): camera topic to H.264 to MediaMTX
+- [Video stream manager](rover/video-stream-manager.md): camera topic to H.264 to MediaMTX, camera launch files, the arm OV9281 and `mjpeg_camera`
 
 **GUI**
 

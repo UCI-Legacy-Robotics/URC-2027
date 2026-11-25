@@ -30,7 +30,7 @@ Setup, branch naming, commit format and the PR process for humans are in `CONTRI
 ## Field constraints
 
 - The competition field has no internet. Never add anything that downloads at runtime: no CDNs, web fonts, online map tiles or package installs on startup.
-- Hardware facts that are easy to get wrong: the stereo camera is a **ZED 2i** (`camera_model:=zed2i`, not `zed2`); the telemetry radio is a 900 MHz RFD900x over USB serial; video goes over a separate 5 GHz link.
+- Hardware facts that are easy to get wrong: the stereo camera is a **ZED 2i** (`camera_model:=zed2i`, not `zed2`) and must link at USB 3 (5000M in `lsusb -t`); the arm camera is an **OV9281** USB module: monochrome, MJPEG only, 60 fps minimum; the telemetry radio is a 900 MHz RFD900x over USB serial; video goes over a separate 5 GHz link.
 
 ## Writing code
 

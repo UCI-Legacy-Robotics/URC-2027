@@ -50,6 +50,12 @@ The wrapper is a heavy build. On the 8 GB Orin Nano, limit parallel jobs so it d
 MAKEFLAGS=-j4 colcon build --symlink-install --parallel-workers 2 --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
+## ROS domain
+
+The rover runs with `ROS_DOMAIN_ID=42`, set in the Jetson's `~/.bashrc`. Without it, any machine on the rover's network on the default domain (0) joins the rover's ROS graph: it sees the rover's nodes, and a `ros2 topic echo` on a camera topic pulls frames over the 5 GHz link. The base station runs no ROS, so nothing there needs this domain.
+
+For local tests on a laptop that's on the rover's network, use another domain, e.g. `export ROS_DOMAIN_ID=77`. To talk to the rover's ROS graph on purpose, use `42`.
+
 ## Workspace layout
 
 ```
