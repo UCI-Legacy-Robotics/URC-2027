@@ -52,6 +52,35 @@ export const noPublisher: VideoFeedData = {
   retryAt: Date.now() + 4000
 }
 
+/** The base pulls from the rover, but the rover doesn't answer over 5 GHz. */
+export const roverUnreachable: VideoFeedData = {
+  state: 'failed',
+  whepUrl: 'http://localhost:18889/rover/front/whep',
+  error: 'No answer from localhost:18889',
+  retryAt: Date.now() + 4000,
+  cause: 'rover-unreachable',
+  roverHost: '192.168.1.67'
+}
+
+/** The rover answers, but its MediaMTX has no stream: the ROS video launch isn't running. */
+export const roverNoStream: VideoFeedData = {
+  state: 'failed',
+  whepUrl: 'http://localhost:18889/rover/front/whep',
+  error: "source of path 'rover/front' has timed out",
+  retryAt: Date.now() + 4000,
+  cause: 'no-stream',
+  roverHost: '192.168.1.67'
+}
+
+/** The backend isn't running, so neither is the base MediaMTX. */
+export const backendDown: VideoFeedData = {
+  state: 'failed',
+  whepUrl: 'http://localhost:18889/rover/front/whep',
+  error: "Can't reach localhost:18889",
+  retryAt: Date.now() + 2000,
+  cause: 'backend-down'
+}
+
 /** Nothing answers at the server address. */
 export const serverUnreachable: VideoFeedData = {
   state: 'failed',

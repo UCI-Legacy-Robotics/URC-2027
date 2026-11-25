@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { backendUrl } from '@renderer/data/backend'
 import type { StatsSample, VideoFeedData } from './data'
 
 /** How much history the stats panel keeps, seconds. */
 export const historySeconds = 120
-
-/** The backend runs on the same machine as the base MediaMTX. */
-const backendPort = 8000
 
 interface RadioTotals {
   rtpPacketsLost: number
@@ -15,9 +13,8 @@ interface RadioTotals {
 /** The backend's stats URL for the stream a WHEP URL plays, or undefined if unparsable. */
 export function radioStatsUrlFor(whepUrl: string): string | undefined {
   try {
-    const url = new URL(whepUrl)
-    const path = url.pathname.replace(/\/whep$/, '')
-    return `${url.protocol}//${url.hostname}:${backendPort}/api/video/stats${path}`
+    const path = new URL(whepUrl).pathname.replace(/\/whep$/, '')
+    return `${backendUrl()}/api/video/stats${path}`
   } catch {
     return undefined
   }

@@ -91,6 +91,21 @@ export const ServerUnreachable: Story = {
   render: (args) => <Retrying data={args.data!} inMs={5000} />
 }
 
+export const RoverUnreachable: Story = {
+  args: { data: fixtures.roverUnreachable },
+  render: (args) => <Retrying data={args.data!} inMs={4000} />
+}
+
+export const RoverNoStream: Story = {
+  args: { data: fixtures.roverNoStream },
+  render: (args) => <Retrying data={args.data!} inMs={4000} />
+}
+
+export const BackendDown: Story = {
+  args: { data: fixtures.backendDown },
+  render: (args) => <Retrying data={args.data!} inMs={2000} />
+}
+
 export const MissingData: Story = { args: { data: fixtures.missingData } }
 
 function Live(): React.JSX.Element {

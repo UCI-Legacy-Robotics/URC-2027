@@ -14,9 +14,11 @@ const disconnectGraceMs = 3000
 const iceGatheringTimeoutMs = 2000
 /**
  * Gives up on the WHEP request after this long. Without it, a host that's off (no TCP
- * answer at all) leaves the request hanging for minutes while the OS retries.
+ * answer at all) leaves the request hanging for minutes while the OS retries. Longer than
+ * the base MediaMTX's on-demand start timeout (10 s), which holds the request while it
+ * pulls from the rover.
  */
-const requestTimeoutMs = 5000
+const requestTimeoutMs = 12_000
 const statsIntervalMs = 1000
 
 /** Fields of `inbound-rtp` stats we read. Not all are in TypeScript's DOM types yet. */

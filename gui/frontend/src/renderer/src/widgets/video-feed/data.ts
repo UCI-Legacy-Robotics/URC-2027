@@ -50,6 +50,15 @@ export interface StatsSample {
   radioFramesInError: number | null
 }
 
+/**
+ * Why there's no video, from the backend's probe of the base and the rover:
+ * - `backend-down`: the backend doesn't answer, so the base MediaMTX isn't running either
+ * - `base-down`: the backend is up but its MediaMTX isn't
+ * - `rover-unreachable`: the rover doesn't answer over the 5 GHz link
+ * - `no-stream`: the rover answers but isn't streaming (ROS video not running)
+ */
+export type VideoFaultCause = 'backend-down' | 'base-down' | 'rover-unreachable' | 'no-stream'
+
 export interface VideoFeedData {
   state: VideoConnectionState
   /** WHEP endpoint being played, e.g. `http://localhost:8889/rover/front/whep`. */
@@ -61,4 +70,8 @@ export interface VideoFeedData {
   /** When the next attempt starts (ms since epoch), while `failed`. */
   retryAt?: number
   stats?: VideoStats
+  /** Set while not playing, if the backend knows why. */
+  cause?: VideoFaultCause
+  /** The rover's 5 GHz address, for `rover-unreachable`. */
+  roverHost?: string
 }

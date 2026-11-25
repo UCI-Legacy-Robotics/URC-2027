@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { WidgetProps } from '@renderer/app/registry'
 import { StatusPill, type StatusTone } from '@renderer/design/StatusPill'
 import { Button } from '@renderer/design/ui/button'
-import type { VideoConnectionState, VideoFeedData, VideoStats } from './data'
+import type { VideoConnectionState, VideoFaultCause, VideoFeedData, VideoStats } from './data'
 import { useStatsHistory } from './history'
 import { defaultSource, useVideoSource, type VideoSource } from './source'
 import { StatsPanel } from './StatsPanel'
@@ -95,6 +95,23 @@ function SourceForm({ onDone }: { onDone: () => void }): React.JSX.Element {
   )
 }
 
+/** What's wrong and what to check, for each cause the backend can tell apart. */
+function describeCause(cause: VideoFaultCause, roverHost?: string): [string, string] {
+  switch (cause) {
+    case 'backend-down':
+      return ['Backend not running', 'Start it from gui/backend: uv run uvicorn app.main:app']
+    case 'base-down':
+      return ['Base MediaMTX not running', "The backend is up but MediaMTX isn't; see its log"]
+    case 'rover-unreachable':
+      return [
+        `Rover unreachable${roverHost ? ` at ${roverHost}` : ''}`,
+        'Check the 5 GHz link and that the rover is powered'
+      ]
+    case 'no-stream':
+      return ['Rover has no camera stream', 'The rover answers; is the ROS video launch running?']
+  }
+}
+
 /** What to show over the video while it isn't playing. */
 function StatusOverlay({ data }: { data: VideoFeedData }): React.JSX.Element {
   const retryIn = useSecondsUntil(data.state === 'failed' ? data.retryAt : undefined)
@@ -107,9 +124,25 @@ function StatusOverlay({ data }: { data: VideoFeedData }): React.JSX.Element {
   const detail =
     data.state === 'failed' ? (retryIn ? `Retrying in ${retryIn}s` : 'Retrying…') : data.error
 
+  const cause = data.cause && describeCause(data.cause, data.roverHost)
+
   return (
     <div className="absolute inset-0 grid place-content-center gap-1 text-center">
-      <span className={data.state === 'failed' ? 'text-sm text-fault' : 'text-sm text-fg-strong'}>
+      {cause && (
+        <>
+          <span className="text-sm text-fault">{cause[0]}</span>
+          <span className="mb-2 text-xs text-fg">{cause[1]}</span>
+        </>
+      )}
+      <span
+        className={
+          cause
+            ? 'text-xs text-fg-muted'
+            : data.state === 'failed'
+              ? 'text-sm text-fault'
+              : 'text-sm text-fg-strong'
+        }
+      >
         {headline}
       </span>
       {detail && <span className="text-xs text-fg-muted">{detail}</span>}

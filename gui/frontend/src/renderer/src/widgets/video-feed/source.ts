@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { VideoFeedData } from './data'
+import { backendUrl } from '@renderer/data/backend'
+import { useVideoLink, type VideoLinkStatus } from '@renderer/data/videoLink'
+import type { VideoFaultCause, VideoFeedData } from './data'
 import { WhepPlayer, whepUrlFor } from './whep'
 
 /**
@@ -34,6 +36,32 @@ export const useVideoSource = create<VideoSourceStore>()(
   )
 )
 
+const loopback = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+function sameHost(a: string, b: string): boolean {
+  try {
+    const [ha, hb] = [new URL(a).hostname, new URL(b).hostname]
+    return ha === hb || (loopback.has(ha) && loopback.has(hb))
+  } catch {
+    return false
+  }
+}
+
+/** The likely reason there's no video. Backend causes only count when playing from the base. */
+function faultCause(
+  whepUrl: string,
+  backend: 'unknown' | 'up' | 'down',
+  link: VideoLinkStatus | undefined
+): VideoFaultCause | undefined {
+  const viaBase = sameHost(whepUrl, backendUrl())
+  if (backend === 'down') return viaBase ? 'backend-down' : undefined
+  if (!link) return undefined
+  if (viaBase && !link.mediamtx) return 'base-down'
+  if (link.state === 'unreachable') return 'rover-unreachable'
+  if (link.state === 'no-stream') return 'no-stream'
+  return undefined
+}
+
 /** Plays the chosen source and keeps it playing. The widget's `useData` hook. */
 export function useVideoFeed(): VideoFeedData {
   const { baseUrl, path } = useVideoSource()
@@ -46,6 +74,10 @@ export function useVideoFeed(): VideoFeedData {
     return () => player.stop()
   }, [whepUrl, path])
 
+  const { backend, link } = useVideoLink()
+
   // Until the new player reports, don't show the old source's state.
-  return data.whepUrl === whepUrl ? data : { state: 'connecting', whepUrl }
+  const current: VideoFeedData = data.whepUrl === whepUrl ? data : { state: 'connecting', whepUrl }
+  if (current.state === 'playing') return current
+  return { ...current, cause: faultCause(whepUrl, backend, link), roverHost: link?.roverHost }
 }

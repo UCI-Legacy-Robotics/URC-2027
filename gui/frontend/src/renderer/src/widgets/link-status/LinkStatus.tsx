@@ -20,7 +20,9 @@ function LinkPill({ label, link }: { label: string; link?: RadioLink }): React.J
   return (
     <StatusPill tone={tone[link.state]}>
       {label} {link.state}
-      {link.state !== 'ok' && <span className="opacity-70">{formatAge(link.lastSeenMs)}</span>}
+      {link.state !== 'ok' && link.lastSeenMs !== undefined && (
+        <span className="opacity-70">{formatAge(link.lastSeenMs)}</span>
+      )}
     </StatusPill>
   )
 }
