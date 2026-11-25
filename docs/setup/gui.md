@@ -86,7 +86,7 @@ From `gui/backend`:
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-`GET /api/health` reports whether the base MediaMTX is running.
+`GET /api/health` reports whether the base MediaMTX is running. `GET /api/video/stats/<path>` gives running totals for one stream from the base MediaMTX: RTP packets lost between the rover and the base (counted from MediaMTX's log), bytes received and damaged frames. The video widget's STATS panel graphs them.
 
 ### Base station video
 

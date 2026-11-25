@@ -72,3 +72,15 @@ async def test_missing_binary_leaves_video_off(tmp_path: Path) -> None:
     video.start()
     assert not video.running
     await video.stop()
+
+
+def test_counts_rtp_packets_lost_from_the_log(tmp_path: Path) -> None:
+    video = MediaMtx(tmp_path / "m", tmp_path / "t.yml", "10.0.0.5", restart_delay_s=1)
+    for line in [
+        "2026/11/24 15:49:44 WAR [path rover/front] [RTSP source] 1 RTP packet lost",
+        "2026/11/24 15:49:45 WAR [path rover/front] [RTSP source] 27 RTP packets lost",
+        "2026/11/24 15:49:46 WAR [path rover/back] [RTSP source] 5 RTP packets lost",
+        "2026/11/24 15:49:47 WAR [path rover/front] processing error: invalid FU-A packet",
+    ]:
+        video.record_log_line(line)
+    assert video._rtp_packets_lost == {"rover/front": 28, "rover/back": 5}

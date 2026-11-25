@@ -1,10 +1,18 @@
 import asyncio
 import contextlib
+import json
 import logging
+import re
 import tempfile
+import urllib.request
+from collections import Counter
 from pathlib import Path
+from typing import Any
 
 log = logging.getLogger(__name__)
+
+# MediaMTX doesn't expose a pulled stream's packet loss in its API, only in its log.
+_RTP_LOST = re.compile(r"\[path (\S+)\] \[RTSP source\] (\d+) RTP packets? lost")
 
 
 def render_config(template: str, rover_host: str) -> str:
@@ -20,11 +28,14 @@ class MediaMtx:
         config_template: Path,
         rover_host: str,
         restart_delay_s: float,
+        api_url: str = "http://127.0.0.1:19997",
     ) -> None:
         self._binary = binary
         self._template = config_template
         self._rover_host = rover_host
         self._restart_delay_s = restart_delay_s
+        self._api_url = api_url
+        self._rtp_packets_lost: Counter[str] = Counter()
         self._process: asyncio.subprocess.Process | None = None
         self._task: asyncio.Task[None] | None = None
         self._dir = tempfile.TemporaryDirectory(prefix="mediamtx-")
@@ -32,6 +43,28 @@ class MediaMtx:
     @property
     def running(self) -> bool:
         return self._process is not None and self._process.returncode is None
+
+    def record_log_line(self, line: str) -> None:
+        if match := _RTP_LOST.search(line):
+            self._rtp_packets_lost[match[1]] += int(match[2])
+
+    async def path_stats(self, path: str) -> dict[str, Any]:
+        """Running totals for one path, since the backend started."""
+        stats: dict[str, Any] = {"rtpPacketsLost": self._rtp_packets_lost[path]}
+        try:
+            info = await asyncio.to_thread(self._api_get, f"/v3/paths/get/{path}")
+        except OSError:
+            return {**stats, "ready": False}
+        return {
+            **stats,
+            "ready": info.get("ready", False),
+            "inboundBytes": info.get("inboundBytes", 0),
+            "inboundFramesInError": info.get("inboundFramesInError", 0),
+        }
+
+    def _api_get(self, route: str) -> dict[str, Any]:
+        with urllib.request.urlopen(self._api_url + route, timeout=2) as response:
+            return json.load(response)
 
     def start(self) -> None:
         if not self._binary.is_file():
@@ -74,8 +107,10 @@ class MediaMtx:
             self._rover_host,
         )
         assert self._process.stdout
-        async for line in self._process.stdout:
-            log.info("mediamtx: %s", line.decode(errors="replace").rstrip())
+        async for raw in self._process.stdout:
+            line = raw.decode(errors="replace").rstrip()
+            self.record_log_line(line)
+            log.info("mediamtx: %s", line)
         await self._process.wait()
 
     async def _terminate(self) -> None:
