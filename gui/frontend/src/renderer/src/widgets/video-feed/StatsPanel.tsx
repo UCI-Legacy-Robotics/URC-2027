@@ -1,5 +1,6 @@
 import 'uplot/dist/uPlot.min.css'
 import { useEffect, useRef, useState } from 'react'
+import { cn } from 'cn'
 import uPlot from 'uplot'
 import type { StatsSample } from './data'
 import { historySeconds } from './history'
@@ -175,58 +176,130 @@ function Chart({ spec, samples }: { spec: ChartSpec; samples: StatsSample[] }): 
   )
 }
 
-const widthKey = 'video-feed.stats-width'
-const defaultWidth = 360
-const minWidth = 240
-/** Room the video keeps when the panel is dragged wide. */
-const minVideoWidth = 240
+/** Which side of the video the panel sits on. */
+export type StatsSide = 'right' | 'bottom'
 
-function savedWidth(): number {
-  const saved = Number(localStorage.getItem(widthKey))
-  return saved >= minWidth ? saved : defaultWidth
+/** Per side: where the size is saved, its default and minimum, and the room the video keeps. */
+const sizing: Record<StatsSide, { key: string; initial: number; min: number; videoMin: number }> = {
+  right: { key: 'video-feed.stats-width', initial: 360, min: 240, videoMin: 240 },
+  bottom: { key: 'video-feed.stats-height', initial: 240, min: 160, videoMin: 160 }
+}
+
+/** Graphs per row and rows when the panel is underneath the video. */
+const bottomColumns = 3
+const bottomRows = Math.ceil(charts.length / bottomColumns)
+
+/**
+ * Underneath, the width of each 16:9 graph: as large as both rows fit in the panel's
+ * height, but no wider than a third of the panel. Leftover width stays as a gap.
+ */
+function useBottomChartWidth(
+  gridRef: React.RefObject<HTMLDivElement | null>,
+  enabled: boolean
+): number | undefined {
+  const [width, setWidth] = useState<number>()
+  useEffect(() => {
+    const grid = gridRef.current
+    if (!grid || !enabled) return
+    const gap = 1 // gap-px
+    const update = (): void => {
+      const byWidth = (grid.clientWidth - gap * (bottomColumns - 1)) / bottomColumns
+      const byHeight = ((grid.clientHeight - gap * (bottomRows - 1)) / bottomRows) * (16 / 9)
+      setWidth(Math.max(0, Math.floor(Math.min(byWidth, byHeight))))
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(grid)
+    return () => observer.disconnect()
+  }, [gridRef, enabled])
+  return width
+}
+
+function savedSize(side: StatsSide): number {
+  const { key, initial, min } = sizing[side]
+  const saved = Number(localStorage.getItem(key))
+  return saved >= min ? saved : initial
 }
 
 /**
- * The last minute of video stats, one point per second, in a panel to the right of
- * the video. Drag its left edge to resize it; the width is remembered. Radio loss is
- * measured by the base MediaMTX; the rest by this window's player.
+ * The last minute of video stats, one point per second, in a panel to the right of or
+ * under the video. Drag its inner edge to resize it; each side's size is remembered.
+ * Radio loss is measured by the base MediaMTX; the rest by this window's player.
  */
-export function StatsPanel({ samples }: { samples: StatsSample[] }): React.JSX.Element {
+export function StatsPanel({
+  samples,
+  side
+}: {
+  samples: StatsSample[]
+  side: StatsSide
+}): React.JSX.Element {
   const panelRef = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(savedWidth)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [sizes, setSizes] = useState(() => ({
+    right: savedSize('right'),
+    bottom: savedSize('bottom')
+  }))
+  const size = sizes[side]
+  const horizontal = side === 'right'
+  const bottomChartWidth = useBottomChartWidth(gridRef, !horizontal)
 
   const startDrag = (event: React.PointerEvent<HTMLDivElement>): void => {
     const panel = panelRef.current
     const parent = panel?.parentElement
     if (!panel || !parent) return
-    const right = panel.getBoundingClientRect().right
-    const maxWidth = Math.max(minWidth, parent.clientWidth - minVideoWidth)
+    const { min, videoMin, key } = sizing[side]
+    const edge = horizontal
+      ? panel.getBoundingClientRect().right
+      : panel.getBoundingClientRect().bottom
+    const max = Math.max(min, (horizontal ? parent.clientWidth : parent.clientHeight) - videoMin)
     const handle = event.currentTarget
     handle.setPointerCapture(event.pointerId)
-    let latest = width
+    let latest = size
     const onMove = (move: PointerEvent): void => {
-      latest = Math.min(maxWidth, Math.max(minWidth, right - move.clientX))
-      setWidth(latest)
+      latest = Math.min(max, Math.max(min, edge - (horizontal ? move.clientX : move.clientY)))
+      setSizes((current) => ({ ...current, [side]: latest }))
     }
     const onUp = (): void => {
       handle.removeEventListener('pointermove', onMove)
       handle.removeEventListener('pointerup', onUp)
-      localStorage.setItem(widthKey, String(Math.round(latest)))
+      localStorage.setItem(key, String(Math.round(latest)))
     }
     handle.addEventListener('pointermove', onMove)
     handle.addEventListener('pointerup', onUp)
   }
 
   return (
-    <div ref={panelRef} className="relative flex shrink-0 border-l border-border" style={{ width }}>
+    <div
+      ref={panelRef}
+      className={cn('relative flex shrink-0 border-border', horizontal ? 'border-l' : 'border-t')}
+      style={horizontal ? { width: size } : { height: size }}
+    >
       <div
         role="separator"
-        aria-orientation="vertical"
+        aria-orientation={horizontal ? 'vertical' : 'horizontal'}
         aria-label="Resize stats panel"
-        className="absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-primary/40"
+        className={cn(
+          'absolute z-10 hover:bg-primary/40',
+          horizontal
+            ? 'inset-y-0 -left-1 w-2 cursor-col-resize'
+            : 'inset-x-0 -top-1 h-2 cursor-row-resize'
+        )}
         onPointerDown={startDrag}
       />
-      <div className="grid min-w-0 flex-1 grid-cols-2 content-start gap-px overflow-y-auto bg-border">
+      <div
+        ref={gridRef}
+        className={cn(
+          'grid min-w-0 flex-1 content-start gap-px bg-border',
+          // On the right, graphs scale with the panel's width and it scrolls. Underneath,
+          // they scale with its height (see useBottomChartWidth), leaving a gap beside them.
+          horizontal ? 'grid-cols-2 overflow-y-auto' : 'min-h-0 justify-start'
+        )}
+        style={
+          horizontal || bottomChartWidth === undefined
+            ? undefined
+            : { gridTemplateColumns: `repeat(${bottomColumns}, ${bottomChartWidth}px)` }
+        }
+      >
         {charts.map((spec) => (
           <Chart key={spec.title} spec={spec} samples={samples} />
         ))}

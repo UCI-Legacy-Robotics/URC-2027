@@ -5,7 +5,7 @@ import { Button } from '@renderer/design/ui/button'
 import type { VideoConnectionState, VideoFaultCause, VideoFeedData, VideoStats } from './data'
 import { useStatsHistory } from './history'
 import { cameras, defaultSourceFor, defaultTile, useVideoSource, type VideoSource } from './source'
-import { StatsPanel } from './StatsPanel'
+import { StatsPanel, type StatsSide } from './StatsPanel'
 
 const tone: Record<VideoConnectionState, StatusTone> = {
   connecting: 'neutral',
@@ -96,6 +96,32 @@ function SourceForm({ tile, onDone }: { tile: string; onDone: () => void }): Rea
   )
 }
 
+/**
+ * Where the stats panel goes in a box this shape: to the right when the box is wider than
+ * the video (so there's spare width beside it), underneath when it's taller. Uses the
+ * box's own size, which doesn't change with the panel, so the side can't flip back and
+ * forth; it follows window resizes and tiles being shown or hidden.
+ */
+function useStatsSide(
+  boxRef: React.RefObject<HTMLDivElement | null>,
+  videoAspect: number
+): StatsSide {
+  const [side, setSide] = useState<StatsSide>('right')
+  useEffect(() => {
+    const box = boxRef.current
+    if (!box) return
+    const update = (): void => {
+      const { clientWidth: width, clientHeight: height } = box
+      if (width && height) setSide(width / height > videoAspect ? 'right' : 'bottom')
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(box)
+    return () => observer.disconnect()
+  }, [boxRef, videoAspect])
+  return side
+}
+
 /** What's wrong and what to check, for each cause the backend can tell apart. */
 function describeCause(cause: VideoFaultCause, path: string, roverHost?: string): [string, string] {
   switch (cause) {
@@ -164,6 +190,7 @@ function StatusOverlay({ data, path }: { data: VideoFeedData; path: string }): R
 export function VideoFeed({ data, instance }: WidgetProps<VideoFeedData>): React.JSX.Element {
   const tile = instance ?? defaultTile
   const videoRef = useRef<HTMLVideoElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const { reloads, path, reload } = useVideoSource(tile)
@@ -176,6 +203,8 @@ export function VideoFeed({ data, instance }: WidgetProps<VideoFeedData>): React
   }, [stream])
 
   const playing = data?.state === 'playing'
+  const { width, height } = data?.stats ?? {}
+  const statsSide = useStatsSide(bodyRef, width && height ? width / height : 16 / 9)
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-panel">
@@ -208,8 +237,11 @@ export function VideoFeed({ data, instance }: WidgetProps<VideoFeedData>): React
         </Button>
       </header>
       {editing && <SourceForm tile={tile} onDone={() => setEditing(false)} />}
-      <div className="flex min-h-0 flex-1">
-        <div className="relative min-w-0 flex-1 bg-bg">
+      <div
+        ref={bodyRef}
+        className={`flex min-h-0 flex-1 ${statsSide === 'right' ? 'flex-row' : 'flex-col'}`}
+      >
+        <div className="relative min-h-0 min-w-0 flex-1 bg-bg">
           {/* Muted, inline autoplay: browsers allow it without a click, and it adds no buffering. */}
           <video
             ref={videoRef}
@@ -221,7 +253,7 @@ export function VideoFeed({ data, instance }: WidgetProps<VideoFeedData>): React
           />
           {data && !playing && <StatusOverlay data={data} path={path} />}
         </div>
-        {showStats && <StatsPanel samples={samples} />}
+        {showStats && <StatsPanel samples={samples} side={statsSide} />}
       </div>
     </section>
   )

@@ -11,7 +11,7 @@ The video screen's tiles (`gui/frontend/src/renderer/src/widgets/video-feed/`) e
 | Status pill | `CONNECTING` (first try), `PLAYING`, `RECONNECTING` (was playing, dropped) or `FAILED` (waiting to retry) |
 | Stats line | Decoded fps, frame size, bitrate and jitter buffer over the last second; freezes since the stream connected |
 | **RELOAD** | Drops the connection and opens a new one at once, like a browser's reload. Also clears the graphs |
-| **STATS** | Opens the stats panel to the right of the video. Drag its left edge to resize it |
+| **STATS** | Opens the stats panel where the tile has room: to the right of the video when the tile is wider than the video (one camera on a wide monitor), underneath when it's taller (e.g. two or three tiles side by side). It moves by itself when the window is resized or tiles are shown or hidden. Drag its inner edge to resize it: the graphs stay 16:9 and grow with it, two per row on the right and three per row underneath. Space they can't use stays empty. The width on the right and the height underneath are remembered separately |
 | **SOURCE** | This tile's MediaMTX address and stream path, e.g. to play straight from the rover's MediaMTX (`http://192.168.1.67:8889`). Defaults to the base station, `http://<this machine>:18889`, and the tile's own camera. Saved per tile, per browser or Electron profile |
 
 The widget reconnects on its own when the stream drops, so RELOAD is only needed to skip a retry wait.
