@@ -2,6 +2,7 @@
 
 #include <map>
 #include <sstream>
+#include <string>
 
 namespace video_stream_manager
 {
@@ -33,7 +34,12 @@ std::string appsrc_caps(const std::string & gst_format, int width, int height, i
   return caps.str();
 }
 
-std::string pipeline_description(const EncoderSettings & s)
+std::string jpeg_appsrc_caps(int fps)
+{
+  return "image/jpeg,framerate=" + std::to_string(fps) + "/1";
+}
+
+std::string pipeline_description(const EncoderSettings & s, Input input)
 {
   const int keyframe_interval = s.keyframe_interval > 0 ? s.keyframe_interval : s.fps;
 
@@ -41,8 +47,12 @@ std::string pipeline_description(const EncoderSettings & s)
   // Live source, timestamped on arrival. Holds at most one frame and drops the
   // older one if the encoder falls behind, so latency stays flat under load.
   p << "appsrc name=src is-live=true format=time do-timestamp=true"
-    << " max-buffers=1 leaky-type=downstream block=false"
-    << " ! videoconvert ! video/x-raw,format=I420"
+    << " max-buffers=1 leaky-type=downstream block=false";
+  if (input == Input::Jpeg) {
+    p << " ! jpegdec";
+  }
+  // A no-op when jpegdec already outputs I420 (4:2:0 JPEG).
+  p << " ! videoconvert ! video/x-raw,format=I420"
     // WebRTC needs no B-frames and a profile every browser decodes.
     // vbv-buf-capacity (ms) stops keyframes from bursting the radio link.
     << " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << s.bitrate_kbps

@@ -1,5 +1,5 @@
-// StreamManager: subscribes to a camera image topic, encodes the frames to
-// H.264 with x264 and publishes them over RTSP to the rover's MediaMTX.
+// StreamManager: subscribes to a camera image (raw or JPEG) topic, encodes the
+// frames to H.264 with x264 and publishes them over RTSP to the rover's MediaMTX.
 //
 // Runs as a component so it can share a process with the camera driver and
 // receive frames without serialization (see docs/rover/video-stream-manager.md).
@@ -18,12 +18,14 @@
 #include "pipeline.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
+#include "sensor_msgs/msg/compressed_image.hpp"
 #include "sensor_msgs/msg/image.hpp"
 
 namespace video_stream_manager
 {
 
 using namespace std::chrono_literals;
+using CompressedImage = sensor_msgs::msg::CompressedImage;
 using Image = sensor_msgs::msg::Image;
 using SteadyClock = std::chrono::steady_clock;
 
@@ -46,9 +48,16 @@ public:
       std::chrono::duration<double>(declare_parameter<double>("retry_period", 2.0)));
 
     // Keep only the newest frame: an old frame is worse than a dropped one.
-    sub_ = create_subscription<Image>(
-      "image", rclcpp::SensorDataQoS(),
-      [this](Image::UniquePtr msg) {on_image(std::move(msg));});
+    if (declare_parameter<bool>("jpeg_input", false)) {
+      input_ = Input::Jpeg;
+      sub_ = create_subscription<CompressedImage>(
+        "image/compressed", rclcpp::SensorDataQoS(),
+        [this](CompressedImage::UniquePtr msg) {on_jpeg(std::move(msg));});
+    } else {
+      sub_ = create_subscription<Image>(
+        "image", rclcpp::SensorDataQoS(),
+        [this](Image::UniquePtr msg) {on_image(std::move(msg));});
+    }
     bus_timer_ = create_wall_timer(100ms, [this]() {poll_bus();});
 
     RCLCPP_INFO(
@@ -86,21 +95,56 @@ private:
       RCLCPP_INFO(get_logger(), "Image size or encoding changed, restarting the pipeline");
       stop_pipeline();
     }
-    if (!pipeline_) {
-      if (last_failure_ && SteadyClock::now() - *last_failure_ < retry_period_) {
-        return;
-      }
-      if (!start_pipeline(*format, msg->width, msg->height)) {
-        last_failure_ = SteadyClock::now();
-        return;
-      }
+    if (!ensure_pipeline(appsrc_caps(*format, msg->width, msg->height, settings_.fps))) {
+      return;
     }
+    format_ = *format;
+    video_format_ = gst_video_format_from_string(format->c_str());
+    width_ = msg->width;
+    height_ = msg->height;
     push_frame(std::move(msg));
   }
 
-  bool start_pipeline(const std::string & format, uint32_t width, uint32_t height)
+  void on_jpeg(CompressedImage::UniquePtr msg)
   {
-    const std::string description = pipeline_description(settings_);
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    if (msg->format.find("jpeg") == std::string::npos) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 5000, "Expected a JPEG image, got format '%s'",
+        msg->format.c_str());
+      return;
+    }
+    if (msg->data.empty()) {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "Dropping empty image");
+      return;
+    }
+    if (!ensure_pipeline(jpeg_appsrc_caps(settings_.fps))) {
+      return;
+    }
+    push_jpeg(std::move(msg));
+  }
+
+  // Starts the pipeline unless it's running or the last attempt failed less
+  // than retry_period ago. Returns whether it's running.
+  bool ensure_pipeline(const std::string & caps)
+  {
+    if (pipeline_) {
+      return true;
+    }
+    if (last_failure_ && SteadyClock::now() - *last_failure_ < retry_period_) {
+      return false;
+    }
+    if (!start_pipeline(caps)) {
+      last_failure_ = SteadyClock::now();
+      return false;
+    }
+    return true;
+  }
+
+  bool start_pipeline(const std::string & caps_string)
+  {
+    const std::string description = pipeline_description(settings_, input_);
     GError * error = nullptr;
     GstElement * pipeline = gst_parse_launch(description.c_str(), &error);
     if (error) {
@@ -113,8 +157,7 @@ private:
     }
 
     GstElement * appsrc = gst_bin_get_by_name(GST_BIN(pipeline), "src");
-    GstCaps * caps = gst_caps_from_string(
-      appsrc_caps(format, static_cast<int>(width), static_cast<int>(height), settings_.fps).c_str());
+    GstCaps * caps = gst_caps_from_string(caps_string.c_str());
     gst_app_src_set_caps(GST_APP_SRC(appsrc), caps);
     gst_caps_unref(caps);
 
@@ -129,13 +172,8 @@ private:
     pipeline_ = pipeline;
     appsrc_ = appsrc;
     bus_ = gst_element_get_bus(pipeline);
-    format_ = format;
-    video_format_ = gst_video_format_from_string(format.c_str());
-    width_ = width;
-    height_ = height;
     RCLCPP_INFO(
-      get_logger(), "Streaming %ux%u %s to %s", width, height, format.c_str(),
-      settings_.rtsp_url.c_str());
+      get_logger(), "Streaming %s to %s", caps_string.c_str(), settings_.rtsp_url.c_str());
     RCLCPP_DEBUG(get_logger(), "Pipeline: %s", description.c_str());
     return true;
   }
@@ -172,7 +210,22 @@ private:
       [](gpointer image) {delete static_cast<Image *>(image);});
     gst_buffer_add_video_meta_full(
       buffer, GST_VIDEO_FRAME_FLAG_NONE, video_format_, width, height, 1, offsets, strides);
+    push_buffer(buffer);
+  }
 
+  // Hands the JPEG bytes to GStreamer without copying, like push_frame.
+  void push_jpeg(CompressedImage::UniquePtr msg)
+  {
+    guint8 * data = msg->data.data();
+    const gsize size = msg->data.size();
+    GstBuffer * buffer = gst_buffer_new_wrapped_full(
+      GST_MEMORY_FLAG_READONLY, data, size, 0, size, msg.release(),
+      [](gpointer image) {delete static_cast<CompressedImage *>(image);});
+    push_buffer(buffer);
+  }
+
+  void push_buffer(GstBuffer * buffer)
+  {
     // Takes ownership of the buffer whatever the result.
     const GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc_), buffer);
     if (ret != GST_FLOW_OK) {
@@ -236,9 +289,10 @@ private:
   }
 
   EncoderSettings settings_;
+  Input input_ = Input::Raw;
   SteadyClock::duration retry_period_;
 
-  rclcpp::Subscription<Image>::SharedPtr sub_;
+  rclcpp::SubscriptionBase::SharedPtr sub_;
   rclcpp::TimerBase::SharedPtr bus_timer_;
 
   // Guards everything below. The subscription and the bus timer can run on
