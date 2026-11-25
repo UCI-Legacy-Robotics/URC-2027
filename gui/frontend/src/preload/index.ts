@@ -11,7 +11,7 @@ const baseStation: BaseStationBridge = {
     minimize: () => ipcRenderer.send('window:minimize'),
     toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
     close: () => ipcRenderer.send('window:close'),
-    openScreen: (screen) => ipcRenderer.send('window:open-screen', screen),
+    openScreen: (screen, view) => ipcRenderer.send('window:open-screen', screen, view),
     onMaximizedChange: (callback) => {
       const listener = (_event: IpcRendererEvent, maximized: boolean): void => callback(maximized)
       ipcRenderer.on('window:maximized', listener)

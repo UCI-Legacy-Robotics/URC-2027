@@ -20,9 +20,12 @@ function WidgetSlot({
  */
 export function WidgetArea({
   at,
+  instance,
   className
 }: {
   at: AreaRef
+  /** Shows only this instance of widgets that have instances; all of them when undefined. */
+  instance?: string
   className?: string
 }): React.JSX.Element {
   const widgets = widgetsIn(at)
@@ -45,8 +48,12 @@ export function WidgetArea({
   return (
     <div className={className}>
       {widgets.flatMap((widget) =>
-        (widget.instances ?? [undefined]).map((instance) => (
-          <WidgetSlot key={`${widget.id}:${instance ?? ''}`} widget={widget} instance={instance} />
+        (
+          widget.instances?.filter((each) => instance === undefined || each === instance) ?? [
+            undefined
+          ]
+        ).map((each) => (
+          <WidgetSlot key={`${widget.id}:${each ?? ''}`} widget={widget} instance={each} />
         ))
       )}
     </div>

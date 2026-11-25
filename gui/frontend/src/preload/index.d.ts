@@ -8,8 +8,11 @@ export interface BaseStationBridge {
     minimize: () => void
     toggleMaximize: () => void
     close: () => void
-    /** Opens a screen in its own window, or focuses it if it's already open. */
-    openScreen: (screen: 'main' | 'video') => void
+    /**
+     * Opens a screen in its own window, or focuses it if it's already open. `view` opens
+     * one tile of it instead, e.g. `('video', 'arm')`, in a window of its own.
+     */
+    openScreen: (screen: 'main' | 'video', view?: string) => void
     /** Called when the window is maximized or restored. Returns an unsubscribe function. */
     onMaximizedChange: (callback: (maximized: boolean) => void) => () => void
   }

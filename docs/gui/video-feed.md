@@ -1,6 +1,6 @@
 # Video feed widget
 
-The video screen's tiles (`gui/frontend/src/renderer/src/widgets/video-feed/`) each play one rover camera from MediaMTX over WebRTC and show how healthy the stream is. There's one tile per camera, `rover/front` (ZED 2i) and `rover/arm` (OV9281), side by side; each has its own camera choice, stats and reload. For how video gets from the rover to the GUI, see [Video](../system/video.md).
+The video screen's tiles (`gui/frontend/src/renderer/src/widgets/video-feed/`) each play one rover camera from MediaMTX over WebRTC and show how healthy the stream is. There's one tile per camera, `rover/front` (ZED 2i) and `rover/arm` (OV9281), side by side; each has its own camera choice, stats and reload. To give each camera its own monitor, open **VIDEO · FRONT** and **VIDEO · ARM** from the main screen's top bar: each opens a window with just that tile (`#/video/front`, `#/video/arm`). A tile's camera choice is saved per tile, not per window: the arm tile in its own window and in the both-cameras window start from the same saved choice, and a change in one shows in the other the next time it opens. For how video gets from the rover to the GUI, see [Video](../system/video.md).
 
 ## Header
 

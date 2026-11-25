@@ -1,28 +1,28 @@
 import { useEffect } from 'react'
 import { MainScreen } from './MainScreen'
-import { screenTitles, useScreen, type ScreenId } from './screens'
+import { screenTitle, useScreen, type ScreenId, type ScreenView } from './screens'
 import { TopBar } from './TopBar'
 import { VideoScreen } from './VideoScreen'
 
-const screens: Record<ScreenId, () => React.JSX.Element> = {
+const screens: Record<ScreenId, (props: { view?: string }) => React.JSX.Element> = {
   main: MainScreen,
   video: VideoScreen
 }
 
 /** One window: the shared top bar plus the layout of the screen this window shows. */
 export function AppShell(): React.JSX.Element {
-  const screen = useScreen()
-  const Screen = screens[screen]
+  const current: ScreenView = useScreen()
+  const Screen = screens[current.screen]
+  const title = current.screen === 'main' ? undefined : screenTitle(current)
 
   useEffect(() => {
-    document.title =
-      screen === 'main' ? 'Legacy Robotics' : `Legacy Robotics · ${screenTitles[screen]}`
-  }, [screen])
+    document.title = title ? `Legacy Robotics · ${title}` : 'Legacy Robotics'
+  }, [title])
 
   return (
     <div className="flex h-full flex-col">
-      <TopBar screen={screen} />
-      <Screen />
+      <TopBar current={current} />
+      <Screen view={current.view} />
     </div>
   )
 }
