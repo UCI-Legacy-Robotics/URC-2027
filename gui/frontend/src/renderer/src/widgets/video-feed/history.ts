@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { backendUrl } from '@renderer/data/backend'
 import type { StatsSample, VideoFeedData } from './data'
 
-/** How much history the stats panel keeps, seconds. */
-export const historySeconds = 120
+/** How much history the stats panel keeps and shows, seconds. */
+export const historySeconds = 60
 
 interface RadioTotals {
   rtpPacketsLost: number
@@ -51,17 +51,23 @@ function useFrameGaps(videoRef: RefObject<HTMLVideoElement | null>): () => numbe
   }, [])
 }
 
-/** One sample per second of the widget's stats, the last `historySeconds` of them. */
+/**
+ * One sample per second of the widget's stats, the last `historySeconds` of them. A new
+ * `resetKey` (e.g. after a reload) starts the history over.
+ */
 export function useStatsHistory(
   data: VideoFeedData | undefined,
-  videoRef: RefObject<HTMLVideoElement | null>
+  videoRef: RefObject<HTMLVideoElement | null>,
+  resetKey: number
 ): StatsSample[] {
-  const [samples, setSamples] = useState<StatsSample[]>([])
+  const [history, setHistory] = useState({ key: resetKey, samples: [] as StatsSample[] })
   const dataRef = useRef(data)
+  const keyRef = useRef(resetKey)
   const takeGap = useFrameGaps(videoRef)
 
   useEffect(() => {
     dataRef.current = data
+    keyRef.current = resetKey
   })
 
   useEffect(() => {
@@ -90,7 +96,8 @@ export function useStatsHistory(
         t: Date.now() / 1000,
         fps: stats?.fps ?? null,
         bitrateKbps: stats?.bitrateKbps ?? null,
-        maxFrameGapMs: playing ? gap : null,
+        // Hidden windows don't draw frames, so their gaps would look like freezes.
+        maxFrameGapMs: playing && !document.hidden ? gap : null,
         jitterBufferMs: stats?.jitterBufferMs ?? null,
         framesDropped: stats?.framesDropped ?? null,
         radioPacketsLost: sameSource ? radio.rtpPacketsLost - lastRadio!.rtpPacketsLost : null,
@@ -101,12 +108,16 @@ export function useStatsHistory(
       }
       lastRadio = radio
       lastRadioUrl = url
-      setSamples((prev) => [...prev.slice(1 - historySeconds), sample])
+      const key = keyRef.current
+      setHistory((prev) => ({
+        key,
+        samples: prev.key === key ? [...prev.samples.slice(1 - historySeconds), sample] : [sample]
+      }))
     }
 
     const timer = setInterval(() => void tick(), 1000)
     return () => clearInterval(timer)
   }, [takeGap])
 
-  return samples
+  return history.key === resetKey ? history.samples : []
 }

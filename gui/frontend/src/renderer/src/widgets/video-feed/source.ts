@@ -23,6 +23,10 @@ export type VideoSource = typeof defaultSource
 
 interface VideoSourceStore extends VideoSource {
   setSource: (source: VideoSource) => void
+  /** Bumped by `reload()`; the player restarts whenever it changes. Not saved. */
+  reloads: number
+  /** Drops the connection and opens a new one at once, skipping any retry wait. */
+  reload: () => void
 }
 
 /** The chosen source, saved in this browser or Electron profile (localStorage). */
@@ -30,9 +34,14 @@ export const useVideoSource = create<VideoSourceStore>()(
   persist(
     (set) => ({
       ...defaultSource,
-      setSource: (source) => set(source)
+      setSource: (source) => set(source),
+      reloads: 0,
+      reload: () => set((state) => ({ reloads: state.reloads + 1 }))
     }),
-    { name: 'video-feed.source' }
+    {
+      name: 'video-feed.source',
+      partialize: ({ baseUrl, path }) => ({ baseUrl, path })
+    }
   )
 )
 
@@ -64,7 +73,7 @@ function faultCause(
 
 /** Plays the chosen source and keeps it playing. The widget's `useData` hook. */
 export function useVideoFeed(): VideoFeedData {
-  const { baseUrl, path } = useVideoSource()
+  const { baseUrl, path, reloads } = useVideoSource()
   const whepUrl = whepUrlFor(baseUrl, path)
   const [data, setData] = useState<VideoFeedData>({ state: 'connecting', whepUrl })
 
@@ -72,7 +81,7 @@ export function useVideoFeed(): VideoFeedData {
     const player = new WhepPlayer(whepUrl, path, setData)
     player.start()
     return () => player.stop()
-  }, [whepUrl, path])
+  }, [whepUrl, path, reloads])
 
   const { backend, link } = useVideoLink()
 

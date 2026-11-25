@@ -97,7 +97,7 @@ export const missingData: VideoFeedData = {
 
 function history(freezeAt?: number): StatsSample[] {
   const start = 1_795_000_000
-  return Array.from({ length: 120 }, (_, i) => {
+  return Array.from({ length: 60 }, (_, i) => {
     const wobble = Math.sin(i / 3)
     const sample: StatsSample = {
       t: start + i,
@@ -120,11 +120,11 @@ function history(freezeAt?: number): StatsSample[] {
   })
 }
 
-/** Two minutes of steady playback with occasional single lost packets. */
+/** A minute of steady playback with occasional single lost packets. */
 export const statsNormal = history()
 
 /** As normal, with the radio holding packets for 1.5 s and then delivering them at once. */
-export const statsFreeze = history(80)
+export const statsFreeze = history(40)
 
 /** Just opened: no samples yet. */
 export const statsEmpty: StatsSample[] = []

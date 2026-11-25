@@ -160,8 +160,10 @@ export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Eleme
   const videoRef = useRef<HTMLVideoElement>(null)
   const [editing, setEditing] = useState(false)
   const [showStats, setShowStats] = useState(false)
-  const samples = useStatsHistory(data, videoRef)
+  const reloads = useVideoSource((source) => source.reloads)
+  const samples = useStatsHistory(data, videoRef, reloads)
   const path = useVideoSource((source) => source.path)
+  const reload = useVideoSource((source) => source.reload)
   const stream = data?.stream
 
   useEffect(() => {
@@ -181,6 +183,9 @@ export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Eleme
         <span className="min-w-0 flex-1 truncate text-right font-mono text-xs text-fg-muted">
           {playing && data.stats ? formatStats(data.stats) : ''}
         </span>
+        <Button variant="outline" size="xs" title="Reconnect to the stream now" onClick={reload}>
+          RELOAD
+        </Button>
         <Button
           variant={showStats ? 'secondary' : 'outline'}
           size="xs"

@@ -2,6 +2,7 @@ import 'uplot/dist/uPlot.min.css'
 import { useEffect, useRef, useState } from 'react'
 import uPlot from 'uplot'
 import type { StatsSample } from './data'
+import { historySeconds } from './history'
 
 type Token = 'ok' | 'primary' | 'caution' | 'fault' | 'fg-strong'
 
@@ -16,12 +17,18 @@ interface ChartSpec {
   unit: string
   lines: Line[]
   digits?: number
+  /** Counts keep 0 at the bottom; other graphs fit the y-axis to the data. */
+  zeroBased?: boolean
+  /** Smallest y-axis span, so steady values with tiny noise don't look like big swings. */
+  minSpan: number
 }
 
 const charts: ChartSpec[] = [
   {
     title: 'Radio loss',
     unit: '/s',
+    zeroBased: true,
+    minSpan: 1,
     lines: [
       { label: 'packets', value: (s) => s.radioPacketsLost, color: 'fault' },
       { label: 'bad frames', value: (s) => s.radioFramesInError, color: 'caution' }
@@ -30,6 +37,7 @@ const charts: ChartSpec[] = [
   {
     title: 'Bitrate',
     unit: 'Mb/s',
+    minSpan: 0.5,
     digits: 1,
     lines: [
       {
@@ -42,21 +50,26 @@ const charts: ChartSpec[] = [
   {
     title: 'Frame rate',
     unit: 'fps',
+    minSpan: 5,
     lines: [{ label: 'decoded', value: (s) => s.fps, color: 'ok' }]
   },
   {
     title: 'Longest frame gap',
     unit: 'ms',
+    minSpan: 20,
     lines: [{ label: 'gap', value: (s) => s.maxFrameGapMs, color: 'primary' }]
   },
   {
     title: 'Jitter buffer',
     unit: 'ms',
+    minSpan: 10,
     lines: [{ label: 'buf', value: (s) => s.jitterBufferMs, color: 'fg-strong' }]
   },
   {
     title: 'Dropped frames',
     unit: '/s',
+    zeroBased: true,
+    minSpan: 1,
     lines: [{ label: 'dropped', value: (s) => s.framesDropped, color: 'caution' }]
   }
 ]
@@ -64,6 +77,16 @@ const charts: ChartSpec[] = [
 /** Theme colors, read from the CSS variables the Tailwind theme defines. */
 function themeColor(token: Token | 'fg-muted' | 'border'): string {
   return getComputedStyle(document.documentElement).getPropertyValue(`--color-${token}`).trim()
+}
+
+/** The y-axis range for the visible data. All values are non-negative. */
+function fitRange(spec: ChartSpec, min: number | null, max: number | null): uPlot.Range.MinMax {
+  if (min === null || max === null) return [0, spec.minSpan]
+  if (spec.zeroBased) return [0, Math.max(max, spec.minSpan) * 1.1]
+  const span = Math.max(max - min, spec.minSpan)
+  const pad = span * 0.15
+  const low = Math.max(0, (min + max) / 2 - span / 2 - pad)
+  return [low, low + span + 2 * pad]
 }
 
 function toData(spec: ChartSpec, samples: StatsSample[]): uPlot.AlignedData {
@@ -98,10 +121,14 @@ function Chart({ spec, samples }: { spec: ChartSpec; samples: StatsSample[] }): 
         height: el.clientHeight,
         legend: { show: false },
         cursor: { sync: { key: 'video-stats' }, points: { size: 4 } },
-        scales: { y: { range: (_u, _min, max) => [0, Math.max(max ?? 0, 1) * 1.1] } },
+        scales: {
+          // A fixed window that scrolls, so a short history isn't stretched across the plot.
+          x: { range: (_u, _min, max) => (max === null ? [0, 1] : [max - historySeconds, max]) },
+          y: { range: (_u, min, max) => fitRange(spec, min, max) }
+        },
         axes: [
           { ...axis, size: 18, space: 60, values: (_u, ticks) => ticks.map(() => '') },
-          { ...axis, space: 20 }
+          { ...axis, space: 14 }
         ],
         series: [
           {},
@@ -160,7 +187,7 @@ function savedWidth(): number {
 }
 
 /**
- * The last two minutes of video stats, one point per second, in a panel to the right of
+ * The last minute of video stats, one point per second, in a panel to the right of
  * the video. Drag its left edge to resize it; the width is remembered. Radio loss is
  * measured by the base MediaMTX; the rest by this window's player.
  */
