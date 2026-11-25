@@ -1,0 +1,47 @@
+# Base station MediaMTX, started and supervised by gui/backend (app/mediamtx.py).
+#
+# ROVER_HOST is replaced with the rover's 5 GHz IP from the backend settings
+# (BASE_ROVER_HOST) before MediaMTX starts. Don't run this file directly.
+#
+# Pulls the rover's stream over the 5 GHz link only while someone is watching,
+# and serves it over WebRTC to the GUI: http://<base>:18889/rover/front.
+# Ports are offset by 10000 from the rover's, so both can run on one machine.
+
+logLevel: info
+logDestinations: [stdout]
+
+readTimeout: 5s
+writeTimeout: 5s
+
+api: yes
+apiAddress: 127.0.0.1:19997
+
+webrtc: yes
+webrtcAddress: :18889
+webrtcLocalUDPAddress: :18189
+
+# For reading the stream with ffplay or VLC while debugging.
+rtsp: yes
+rtspTransports: [tcp]
+rtspAddress: :18554
+
+srt: no
+rtmp: no
+hls: no
+moq: no
+playback: no
+metrics: no
+pprof: no
+
+pathDefaults:
+  sourceOnDemand: yes
+  sourceOnDemandStartTimeout: 10s
+  sourceOnDemandCloseAfter: 10s
+
+paths:
+  # RTSP over UDP from the rover: a lost packet damages one frame instead of
+  # stalling the stream while TCP retransmits. The base must accept UDP from
+  # the rover on ports MediaMTX picks at random.
+  rover/front:
+    source: rtsp://ROVER_HOST:8554/rover/front
+    rtspTransport: udp

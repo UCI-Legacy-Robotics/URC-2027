@@ -78,12 +78,38 @@ cd gui/backend
 uv sync
 ```
 
+### Run the backend
+
+From `gui/backend`:
+
+```bash
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+`GET /api/health` reports whether the base MediaMTX is running.
+
+### Base station video
+
+The backend runs the base station [MediaMTX](../system/video.md), which pulls the rover's camera streams over the 5 GHz link and serves them to the GUI over WebRTC on port 18889.
+
+1. Before going to the field (it needs internet), download the pinned MediaMTX into `gui/backend/bin/`:
+   ```bash
+   scripts/install_mediamtx.sh
+   ```
+2. Set the rover's 5 GHz IP if it isn't the default `192.168.1.67`, in `gui/backend/.env` or the environment:
+   ```bash
+   BASE_ROVER_HOST=192.168.1.67
+   ```
+
+The rover sends video to UDP ports that the base MediaMTX picks at random, so the base's firewall must accept UDP from the rover.
+
 ### Backend checks
 
 From `gui/backend`:
 
 ```bash
-uv run ruff check .
+uv run ruff check . && uv run ruff format --check .
+uv run pytest -q
 ```
 
 ### Regenerate MAVLink code

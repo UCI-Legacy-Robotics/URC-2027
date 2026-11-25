@@ -4,7 +4,8 @@ Rover cameras reach the GUI over the 5 GHz link; the 900 MHz link only carries t
 
 - All cameras run in one camera process on the rover, so frames reach the stream manager without serialization. It encodes H.264.
 - The rover's MediaMTX only sends a stream over 5 GHz while someone is watching it (on-demand pull).
-- The base MediaMTX serves the streams over WebRTC to the Electron app and to browser viewers. Video doesn't go through `gui/backend`.
+- The base MediaMTX pulls each stream from the rover as RTSP over UDP, so a lost packet damages one frame instead of stalling the stream while TCP retransmits. It serves the streams over WebRTC (port 18889) to the Electron app and to browser viewers.
+- `gui/backend` starts the base MediaMTX, restarts it if it exits and stops it on shutdown (see [GUI setup](../setup/gui.md#base-station-video)). Video itself doesn't go through the backend. The config is `gui/backend/mediamtx/mediamtx.yml`.
 - Bitrate and resolution are commands, so only the Electron app can change them. They travel over 900 MHz as MAVLink commands (see [MAVLink dialect](mavlink.md)).
 
 ```mermaid
