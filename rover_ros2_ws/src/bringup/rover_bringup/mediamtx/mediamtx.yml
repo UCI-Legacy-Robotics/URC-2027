@@ -35,7 +35,7 @@ srtAddress: :8890
 # it on the real link.
 srtMinLatency: 120ms
 
-# Lets a browser open http://<rover IP>:8889/rover/front directly, for
+# Lets a browser open http://<rover IP>:8889/rover/front (or rover/arm) directly, for
 # testing without the base station.
 webrtc: yes
 webrtcAddress: :8889
@@ -51,4 +51,7 @@ pprof: no
 paths:
   # ZED left camera, from video_stream_manager.
   rover/front:
+    source: publisher
+  # Arm OV9281, from the second video_stream_manager (arm_camera.launch.py).
+  rover/arm:
     source: publisher

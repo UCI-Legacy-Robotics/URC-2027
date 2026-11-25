@@ -7,6 +7,8 @@
 using video_stream_manager::appsrc_caps;
 using video_stream_manager::EncoderSettings;
 using video_stream_manager::gst_format_for_encoding;
+using video_stream_manager::Input;
+using video_stream_manager::jpeg_appsrc_caps;
 using video_stream_manager::pipeline_description;
 
 namespace
@@ -45,9 +47,14 @@ TEST(AppsrcCaps, DescribesFrames)
     "video/x-raw,format=BGRA,width=1280,height=720,framerate=30/1");
 }
 
+TEST(AppsrcCaps, DescribesJpeg)
+{
+  EXPECT_EQ(jpeg_appsrc_caps(30), "image/jpeg,framerate=30/1");
+}
+
 TEST(PipelineDescription, UsesSettings)
 {
-  const std::string p = pipeline_description(default_settings());
+  const std::string p = pipeline_description(default_settings(), Input::Raw);
   EXPECT_TRUE(contains(p, "appsrc name=src"));
   EXPECT_TRUE(contains(p, "bitrate=2000"));
   EXPECT_TRUE(contains(p, "location=\"rtsp://127.0.0.1:8554/rover/front\""));
@@ -56,7 +63,7 @@ TEST(PipelineDescription, UsesSettings)
 
 TEST(PipelineDescription, IsWebRtcCompatible)
 {
-  const std::string p = pipeline_description(default_settings());
+  const std::string p = pipeline_description(default_settings(), Input::Raw);
   EXPECT_TRUE(contains(p, "bframes=0"));
   EXPECT_TRUE(contains(p, "profile=constrained-baseline"));
   EXPECT_TRUE(contains(p, "config-interval=-1"));
@@ -66,8 +73,17 @@ TEST(PipelineDescription, KeyframeEverySecondByDefault)
 {
   EncoderSettings s = default_settings();
   s.fps = 15;
-  EXPECT_TRUE(contains(pipeline_description(s), "key-int-max=15"));
+  EXPECT_TRUE(contains(pipeline_description(s, Input::Raw), "key-int-max=15"));
 
   s.keyframe_interval = 10;
-  EXPECT_TRUE(contains(pipeline_description(s), "key-int-max=10"));
+  EXPECT_TRUE(contains(pipeline_description(s, Input::Raw), "key-int-max=10"));
+}
+
+TEST(PipelineDescription, DecodesJpegInputOnly)
+{
+  EXPECT_FALSE(contains(pipeline_description(default_settings(), Input::Raw), "jpegdec"));
+  EXPECT_TRUE(
+    contains(
+      pipeline_description(default_settings(), Input::Jpeg),
+      "! jpegdec ! videoconvert ! video/x-raw,format=I420"));
 }

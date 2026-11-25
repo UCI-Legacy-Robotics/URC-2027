@@ -2,7 +2,7 @@
 
 Rover cameras reach the GUI over the 5 GHz link; the 900 MHz link only carries the controls.
 
-- All cameras run in one camera process on the rover, so frames reach the stream manager without serialization. It encodes H.264.
+- Each camera runs in its own process (component container) with its own stream manager, so frames reach the encoder without serialization and one camera failing doesn't stop the others. Each stream manager encodes H.264 to its own MediaMTX path: `rover/front` (ZED 2i) and `rover/arm` (OV9281). See [Video stream manager](../rover/video-stream-manager.md).
 - The rover's MediaMTX only sends a stream over 5 GHz while someone is watching it (on-demand pull).
 - The base MediaMTX pulls each stream from the rover as RTSP over UDP, so a lost packet damages one frame instead of stalling the stream while TCP retransmits. It serves the streams over WebRTC (port 18889) to the Electron app and to browser viewers.
 - `gui/backend` starts the base MediaMTX, restarts it if it exits and stops it on shutdown (see [GUI setup](../setup/gui.md#base-station-video)). Video itself doesn't go through the backend. The config is `gui/backend/mediamtx/mediamtx.yml`.
@@ -12,11 +12,17 @@ Rover cameras reach the GUI over the 5 GHz link; the 900 MHz link only carries t
 ```mermaid
 flowchart LR
     subgraph ROVER["Rover (ROS 2)"]
-        subgraph CAMPROC["Camera process (component_container_mt, intra-process)"]
+        subgraph FRONTPROC["Front camera process (intra-process)"]
             ZED["ZED 2i driver<br/>(zed-ros2-wrapper)"]
-            ARMCAM["arm camera drivers<br/>2× OV9281 (arm mission)"]
+            SMF["stream manager<br/>(GStreamer, H.264)"]
+        end
+        subgraph ARMPROC["Arm camera process (intra-process)"]
+            ARMCAM["OV9281 driver<br/>(mjpeg_camera, JPEG)<br/>second OV9281 planned"]
+            SMA["stream manager<br/>(JPEG decode, H.264)"]
+        end
+        subgraph SCIPROC["Science camera process (planned)"]
             SCICAM["science camera node<br/>A219 (science mission)"]
-            SM["stream manager<br/>(GStreamer, H.264)"]
+            SMS["stream manager"]
         end
         RMTX["MediaMTX (rover)"]
         TELEM["rover_telemetry<br/>(ROS ↔ MAVLink)"]
@@ -35,13 +41,15 @@ flowchart LR
 
     VIEW["gui/frontend in a browser<br/>(read-only viewers)"]
 
-    %% Frames into the stream manager (no serialization)
-    ZED -->|"images (in-process)"| SM
-    ARMCAM -->|"images (in-process)"| SM
-    SCICAM -->|"live video frames"| SM
+    %% Frames into each stream manager (no serialization)
+    ZED -->|"images (in-process)"| SMF
+    ARMCAM -->|"JPEGs (in-process)"| SMA
+    SCICAM -->|"live video frames"| SMS
 
     %% Video path
-    SM -->|"H.264"| RMTX
+    SMF -->|"H.264 rover/front"| RMTX
+    SMA -->|"H.264 rover/arm"| RMTX
+    SMS -->|"H.264"| RMTX
     RMTX -->|"on-demand pull<br/>(only while watched)"| R5G
     R5G --> BMTX
     BMTX -->|"WebRTC"| APP
@@ -51,5 +59,6 @@ flowchart LR
     APP -->|"bitrate / resolution"| BACK
     BACK <--> R900
     R900 <--> TELEM
-    TELEM -->|"bitrate / resolution"| SM
+    TELEM -->|"bitrate / resolution"| SMF
+    TELEM -->|"bitrate / resolution"| SMA
 ```

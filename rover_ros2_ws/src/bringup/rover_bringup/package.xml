@@ -13,6 +13,7 @@
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>rclcpp_components</exec_depend>
   <exec_depend>video_stream_manager</exec_depend>
+  <exec_depend>mjpeg_camera</exec_depend>
   <!-- test_source:=true only -->
   <exec_depend>image_tools</exec_depend>
   <!-- video.launch.py also needs zed_wrapper. It isn't listed here because it
