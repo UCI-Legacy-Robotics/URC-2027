@@ -114,7 +114,7 @@ function Live(): React.JSX.Element {
 
 /**
  * Connects for real, to the source set with the SOURCE button (default
- * `http://localhost:8889`, path `rover/front`). Shows "failed" with retries if nothing
+ * `http://localhost:18889`, path `rover/front`). Shows "failed" with retries if nothing
  * is running there.
  */
 export const LiveStream: Story = {

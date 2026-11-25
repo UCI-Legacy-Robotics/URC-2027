@@ -1,18 +1,19 @@
 # Video feed widget
 
-The video screen's tile (`gui/frontend/src/renderer/src/widgets/video-feed/`) plays one rover camera from MediaMTX over WebRTC and shows how healthy the stream is. For how video gets from the rover to the GUI, see [Video](../system/video.md).
+The video screen's tiles (`gui/frontend/src/renderer/src/widgets/video-feed/`) each play one rover camera from MediaMTX over WebRTC and show how healthy the stream is. There's one tile per camera, `rover/front` (ZED 2i) and `rover/arm` (OV9281), side by side; each has its own camera choice, stats and reload. For how video gets from the rover to the GUI, see [Video](../system/video.md).
 
 ## Header
 
-`ROVER/FRONT  PLAYING   30 fps · 1280×720 · 1.8 Mb/s · buf 8 ms   RELOAD  STATS  SOURCE`
+`ROVER/FRONT  PLAYING   30 fps · 1280×720 · 1.8 Mb/s · buf 8 ms   FRONT  ARM  RELOAD  STATS  SOURCE`
 
 | Part | Meaning |
 | ---- | ------- |
 | Status pill | `CONNECTING` (first try), `PLAYING`, `RECONNECTING` (was playing, dropped) or `FAILED` (waiting to retry) |
 | Stats line | Decoded fps, frame size, bitrate and jitter buffer over the last second; freezes since the stream connected |
+| **FRONT** / **ARM** | Switches this tile to that camera on the same server. The highlighted one is playing |
 | **RELOAD** | Drops the connection and opens a new one at once, like a browser's reload. Also clears the graphs |
 | **STATS** | Opens the stats panel to the right of the video. Drag its left edge to resize it |
-| **SOURCE** | MediaMTX address and stream path. The base station is `http://localhost:18889`, path `rover/front`. Saved per browser or Electron profile |
+| **SOURCE** | This tile's MediaMTX address and stream path, for anything the camera buttons don't cover, e.g. playing straight from the rover's MediaMTX (`http://192.168.1.67:8889`). Defaults to the base station, `http://<this machine>:18889`, and the tile's own camera. Saved per tile, per browser or Electron profile |
 
 The widget reconnects on its own when the stream drops, so RELOAD is only needed to skip a retry wait.
 
@@ -25,7 +26,8 @@ The backend probes the rover every 2 s, so the tile can say why there's no video
 | Backend not running | Nothing answers on port 8000, so the base MediaMTX isn't running either | Start the backend ([GUI setup](../setup/gui.md#run-the-backend)) |
 | Base MediaMTX not running | The backend is up but couldn't start MediaMTX | The backend's log; `gui/backend/bin/mediamtx` exists |
 | Rover unreachable at 192.168.1.67 | The rover doesn't answer over the 5 GHz link. The top bar's 5 GHz badge also turns red | Radio link, rover power |
-| Rover has no camera stream | The rover answers, but nothing publishes `rover/front` on it | Is `ros2 launch rover_bringup video.launch.py` running? |
+| Rover isn't streaming rover/front | The rover answers, but nothing publishes that path on it | Is `ros2 launch rover_bringup video.launch.py` running? |
+| Rover isn't streaming rover/arm | The same, for the arm camera | Was the launch started with `arm_camera:=true`, and is the OV9281 plugged in? |
 
 ## Stats panel
 

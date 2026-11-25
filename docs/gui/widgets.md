@@ -53,6 +53,8 @@ export default defineWidget<LinkStatusData>({
 | `screen: 'main', area: 'left' \| 'center' \| 'right'` | Main screen: side panels or the map area |
 | `screen: 'video', area: 'grid'` | Video screen: one tile in the grid |
 
+**Instances.** To show a widget more than once, side by side, list its instances, e.g. `instances: ['front', 'arm']` for one video tile per camera. The shell renders one tile per entry and calls `useData(instance)` for each; the component gets the same string as its `instance` prop. Keep per-tile state keyed by it. Without `instances` the widget appears once and `instance` is `undefined`.
+
 ### `<WidgetName>.tsx`
 
 The component. It gets its data as a `data` prop (`WidgetProps<YourData>`), which is `undefined` until any data arrives, and reads the mode with `useMode()` from `@renderer/app/mode`. Build it from the base components in `design/` (Panel, SectionHeader, StatusPill, Button, DataField) rather than raw elements.
