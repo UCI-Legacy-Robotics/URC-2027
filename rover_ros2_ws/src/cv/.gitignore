@@ -12,6 +12,7 @@ __pycache__/
 *.onnx
 !cv_pose/models/*.onnx
 !cv_gesture/models/*.onnx
+!cv_classifier/models/*.onnx
 *.pt
 *.pth
 *.engine
