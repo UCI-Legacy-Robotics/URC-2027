@@ -36,6 +36,7 @@ All project docs live in this folder. READMEs next to the code only hold a one-l
 - [Architecture](gui/architecture.md): control model, failsafes, shell, tech stack
 - [Writing a widget](gui/widgets.md)
 - [Design direction](gui/design.md)
+- [Video feed widget](gui/video-feed.md): reading the video tile and its stats graphs
 
 ## Writing docs
 
