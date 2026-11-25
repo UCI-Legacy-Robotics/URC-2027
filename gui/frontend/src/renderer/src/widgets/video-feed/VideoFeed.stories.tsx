@@ -3,6 +3,7 @@ import type { Decorator, Meta, StoryObj } from '@storybook/react-vite'
 import type { VideoFeedData } from './data'
 import * as fixtures from './fixtures'
 import { useVideoFeed } from './source'
+import { StatsPanel } from './StatsPanel'
 import { VideoFeed } from './VideoFeed'
 
 /** A moving test pattern as a MediaStream, standing in for the camera. */
@@ -104,4 +105,32 @@ function Live(): React.JSX.Element {
 export const LiveStream: Story = {
   args: { data: undefined },
   render: () => <Live />
+}
+
+/** The STATS panel on its own, with fixture history, at its default width. */
+export const StatsSteady: Story = {
+  args: { data: undefined },
+  render: () => (
+    <div className="flex h-full justify-end">
+      <StatsPanel samples={fixtures.statsNormal} />
+    </div>
+  )
+}
+
+export const StatsFreezeThenBurst: Story = {
+  args: { data: undefined },
+  render: () => (
+    <div className="flex h-full justify-end">
+      <StatsPanel samples={fixtures.statsFreeze} />
+    </div>
+  )
+}
+
+export const StatsNoSamplesYet: Story = {
+  args: { data: undefined },
+  render: () => (
+    <div className="flex h-full justify-end">
+      <StatsPanel samples={fixtures.statsEmpty} />
+    </div>
+  )
 }

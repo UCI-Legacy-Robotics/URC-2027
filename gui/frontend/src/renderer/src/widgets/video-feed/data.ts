@@ -1,7 +1,8 @@
 /**
- * Data the video-feed widget shows. None of it comes from the backend or the message
- * schema: video goes straight from MediaMTX to the UI over WebRTC, and the widget's own
- * WHEP client (whep.ts) produces this.
+ * Data the video-feed widget shows. None of it comes from the message schema: video goes
+ * straight from MediaMTX to the UI over WebRTC and the widget's own WHEP client (whep.ts)
+ * produces this, apart from the radio numbers in `StatsSample`, which come from the
+ * backend's `/api/video/stats/<path>`.
  */
 
 /**
@@ -23,10 +24,30 @@ export interface VideoStats {
   bitrateKbps?: number
   /** Freezes the browser detected since this connection started. */
   freezeCount?: number
-  /** RTP packets lost since this connection started. */
-  packetsLost?: number
-  /** Average time frames wait in the jitter buffer, milliseconds. */
+  /** Frames the browser received but didn't show, in the last second. */
+  framesDropped?: number
+  /** Average time frames waited in the jitter buffer in the last second, milliseconds. */
   jitterBufferMs?: number
+}
+
+/**
+ * One second of the stats panel's history. `null` where there's no value, e.g. while the
+ * stream isn't playing or the backend isn't reachable.
+ */
+export interface StatsSample {
+  /** Seconds since epoch. */
+  t: number
+  fps: number | null
+  /** kbit/s. */
+  bitrateKbps: number | null
+  /** Longest time between two frames shown on screen, milliseconds. 33 at a steady 30 fps. */
+  maxFrameGapMs: number | null
+  jitterBufferMs: number | null
+  framesDropped: number | null
+  /** RTP packets lost between the rover and the base MediaMTX, from the backend. */
+  radioPacketsLost: number | null
+  /** Frames the base MediaMTX received damaged, from the backend. */
+  radioFramesInError: number | null
 }
 
 export interface VideoFeedData {

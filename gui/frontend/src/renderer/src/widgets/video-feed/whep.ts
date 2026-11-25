@@ -29,9 +29,18 @@ interface InboundVideoStats {
   frameHeight?: number
   bytesReceived?: number
   freezeCount?: number
-  packetsLost?: number
+  framesDropped?: number
   jitterBufferDelay?: number
   jitterBufferEmittedCount?: number
+}
+
+/** Counters from the previous stats poll, to turn running totals into per-second values. */
+interface Counters {
+  at: number
+  bytes: number
+  dropped: number
+  jitterDelay: number
+  jitterEmitted: number
 }
 
 /** The WHEP endpoint for a MediaMTX base URL and path. */
@@ -97,7 +106,7 @@ export class WhepPlayer {
   private attemptStartedAt = 0
   private lastFrames = 0
   private lastFrameAt = 0
-  private lastBytes?: { bytes: number; at: number }
+  private last?: Counters
 
   private retryTimer?: ReturnType<typeof setTimeout>
   private disconnectTimer?: ReturnType<typeof setTimeout>
@@ -145,7 +154,7 @@ export class WhepPlayer {
     this.attemptStartedAt = performance.now()
     this.lastFrames = 0
     this.lastFrameAt = this.attemptStartedAt
-    this.lastBytes = undefined
+    this.last = undefined
 
     pc.addTransceiver('video', { direction: 'recvonly' })
     pc.addEventListener('track', (event) => {
@@ -233,20 +242,26 @@ export class WhepPlayer {
       fps: video?.framesPerSecond,
       width: video?.frameWidth,
       height: video?.frameHeight,
-      freezeCount: video?.freezeCount,
-      packetsLost: video?.packetsLost
+      freezeCount: video?.freezeCount
     }
-    if (video?.jitterBufferDelay !== undefined && video.jitterBufferEmittedCount) {
-      stats.jitterBufferMs = (video.jitterBufferDelay / video.jitterBufferEmittedCount) * 1000
+    const counters: Counters = {
+      at: now,
+      bytes: video?.bytesReceived ?? 0,
+      dropped: video?.framesDropped ?? 0,
+      jitterDelay: video?.jitterBufferDelay ?? 0,
+      jitterEmitted: video?.jitterBufferEmittedCount ?? 0
     }
-    if (video?.bytesReceived !== undefined) {
-      if (this.lastBytes) {
-        // bits per millisecond = kbit/s
-        stats.bitrateKbps =
-          ((video.bytesReceived - this.lastBytes.bytes) * 8) / (now - this.lastBytes.at)
+    const last = this.last
+    if (last) {
+      // bits per millisecond = kbit/s
+      stats.bitrateKbps = ((counters.bytes - last.bytes) * 8) / (now - last.at)
+      stats.framesDropped = counters.dropped - last.dropped
+      const emitted = counters.jitterEmitted - last.jitterEmitted
+      if (emitted > 0) {
+        stats.jitterBufferMs = ((counters.jitterDelay - last.jitterDelay) / emitted) * 1000
       }
-      this.lastBytes = { bytes: video.bytesReceived, at: now }
     }
+    this.last = counters
 
     this.hasPlayed = true
     this.failures = 0

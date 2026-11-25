@@ -4,10 +4,11 @@
     <meta charset="UTF-8" />
     <title>Legacy Robotics</title>
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-         connect-src: MediaMTX WebRTC (WHEP) for video, 8889 on the rover and 18889 on the base. -->
+         connect-src: MediaMTX WebRTC (WHEP) for video, 8889 on the rover and 18889 on the base;
+         8000 for the backend's video stats. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://*:8889 http://*:18889"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://*:8889 http://*:18889 http://*:8000"
     />
   </head>
 

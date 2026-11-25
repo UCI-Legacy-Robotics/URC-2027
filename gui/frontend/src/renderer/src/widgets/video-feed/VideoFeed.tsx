@@ -3,7 +3,9 @@ import type { WidgetProps } from '@renderer/app/registry'
 import { StatusPill, type StatusTone } from '@renderer/design/StatusPill'
 import { Button } from '@renderer/design/ui/button'
 import type { VideoConnectionState, VideoFeedData, VideoStats } from './data'
+import { useStatsHistory } from './history'
 import { defaultSource, useVideoSource, type VideoSource } from './source'
+import { StatsPanel } from './StatsPanel'
 
 const tone: Record<VideoConnectionState, StatusTone> = {
   connecting: 'neutral',
@@ -103,7 +105,7 @@ function StatusOverlay({ data }: { data: VideoFeedData }): React.JSX.Element {
     failed: data.error ?? 'Failed'
   }[data.state]
   const detail =
-    data.state === 'failed' ? (retryIn ? `Retrying in ${retryIn}s` : 'Retrying…') : data.error // why the last attempt failed, while the next one runs
+    data.state === 'failed' ? (retryIn ? `Retrying in ${retryIn}s` : 'Retrying…') : data.error
 
   return (
     <div className="absolute inset-0 grid place-content-center gap-1 text-center">
@@ -124,6 +126,8 @@ function StatusOverlay({ data }: { data: VideoFeedData }): React.JSX.Element {
 export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [editing, setEditing] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+  const samples = useStatsHistory(data, videoRef)
   const path = useVideoSource((source) => source.path)
   const stream = data?.stream
 
@@ -145,6 +149,14 @@ export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Eleme
           {playing && data.stats ? formatStats(data.stats) : ''}
         </span>
         <Button
+          variant={showStats ? 'secondary' : 'outline'}
+          size="xs"
+          aria-expanded={showStats}
+          onClick={() => setShowStats(!showStats)}
+        >
+          STATS
+        </Button>
+        <Button
           variant={editing ? 'secondary' : 'outline'}
           size="xs"
           aria-expanded={editing}
@@ -154,17 +166,20 @@ export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Eleme
         </Button>
       </header>
       {editing && <SourceForm onDone={() => setEditing(false)} />}
-      <div className="relative min-h-0 flex-1 bg-bg">
-        {/* Muted, inline autoplay: browsers allow it without a click, and it adds no buffering. */}
-        <video
-          ref={videoRef}
-          className="absolute inset-0 h-full w-full object-contain"
-          autoPlay
-          muted
-          playsInline
-          disablePictureInPicture
-        />
-        {data && !playing && <StatusOverlay data={data} />}
+      <div className="flex min-h-0 flex-1">
+        <div className="relative min-w-0 flex-1 bg-bg">
+          {/* Muted, inline autoplay: browsers allow it without a click, and it adds no buffering. */}
+          <video
+            ref={videoRef}
+            className="absolute inset-0 h-full w-full object-contain"
+            autoPlay
+            muted
+            playsInline
+            disablePictureInPicture
+          />
+          {data && !playing && <StatusOverlay data={data} />}
+        </div>
+        {showStats && <StatsPanel samples={samples} />}
       </div>
     </section>
   )
