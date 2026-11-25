@@ -1,0 +1,54 @@
+# Rover MediaMTX, run as a systemd service on the Jetson (install.sh).
+#
+# video_stream_manager publishes H.264 here over RTSP on localhost. The base
+# station MediaMTX pulls from here over the 5 GHz link, over RTSP (TCP or UDP)
+# or SRT, only while someone at the base is watching.
+#
+# After editing, rerun `sudo ./install.sh` to copy it to /etc/mediamtx/ and restart.
+#
+# Ports the base station must be able to reach on the rover:
+#   8554/tcp        RTSP (control, and media when the base uses TCP)
+#   8000-8001/udp   RTSP media when the base uses UDP
+#   8890/udp        SRT
+#   8889/tcp + 8189/udp  WebRTC, for opening a stream straight from the rover in a browser
+
+logLevel: info
+logDestinations: [stdout]  # goes to the journal: journalctl -u mediamtx
+
+# Stop waiting on a dead radio link sooner than the 10 s default.
+readTimeout: 5s
+writeTimeout: 5s
+
+api: yes
+apiAddress: 127.0.0.1:9997
+
+rtsp: yes
+rtspTransports: [udp, tcp]
+rtspAddress: :8554
+rtpAddress: :8000
+rtcpAddress: :8001
+
+srt: yes
+srtAddress: :8890
+# SRT buffers this long so it can retransmit lost packets. Rule of thumb:
+# about 4x the radio's round-trip time. 120 ms is MediaMTX's default; tune
+# it on the real link.
+srtMinLatency: 120ms
+
+# Lets a browser open http://<rover IP>:8889/rover/front directly, for
+# testing without the base station.
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+
+rtmp: no
+hls: no
+moq: no
+playback: no
+metrics: no
+pprof: no
+
+paths:
+  # ZED left camera, from video_stream_manager.
+  rover/front:
+    source: publisher

@@ -1,0 +1,16 @@
+# Installed to /etc/systemd/system/ by install.sh.
+[Unit]
+Description=MediaMTX video server for the rover cameras
+Documentation=https://github.com/bluenviron/mediamtx
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/mediamtx /etc/mediamtx/mediamtx.yml
+Restart=always
+RestartSec=2
+# Runs as a throwaway unprivileged user: MediaMTX only needs ports above 1024.
+DynamicUser=yes
+
+[Install]
+WantedBy=multi-user.target

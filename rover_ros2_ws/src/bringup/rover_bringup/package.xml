@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>rover_bringup</name>
+  <version>0.1.0</version>
+  <description>Top-level launch files and configs for the rover.</description>
+  <maintainer email="TODO@todo.com">Ethan Shih</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rclcpp_components</exec_depend>
+  <exec_depend>video_stream_manager</exec_depend>
+  <!-- test_source:=true only -->
+  <exec_depend>image_tools</exec_depend>
+  <!-- video.launch.py also needs zed_wrapper. It isn't listed here because it
+       has no rosdep key: it comes from rover.repos, on the Jetson only. -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
