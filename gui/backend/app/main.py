@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.mediamtx import MediaMtx
+from app.rover_link import RoverLink
 from app.settings import Settings
 
 logging.basicConfig(
@@ -23,9 +24,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.rover_host,
         settings.mediamtx_restart_delay_s,
     )
+    rover = RoverLink(
+        settings.rover_host, settings.rover_rtsp_port, settings.rover_stream_path
+    )
     video.start()
+    rover.start()
     app.state.video = video
+    app.state.rover = rover
     yield
+    await rover.stop()
     await video.stop()
 
 
@@ -42,3 +49,9 @@ def health() -> dict[str, bool]:
 @app.get("/api/video/stats/{path:path}")
 async def video_stats(path: str) -> dict[str, Any]:
     return await app.state.video.path_stats(path)
+
+
+@app.get("/api/video/link")
+def video_link() -> dict[str, Any]:
+    """The 5 GHz video link as the base sees it, and whether the base MediaMTX runs."""
+    return {**app.state.rover.status(), "mediamtx": app.state.video.running}

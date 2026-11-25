@@ -16,6 +16,9 @@ class Settings(BaseSettings):
 
     rover_host: str = "192.168.1.67"
     """The rover's IP or hostname on the 5 GHz video link."""
+    rover_rtsp_port: int = 8554
+    rover_stream_path: str = "rover/front"
+    """Stream the backend probes to judge the 5 GHz link and whether the rover is streaming."""
 
     mediamtx_bin: Path = BACKEND_DIR / "bin" / "mediamtx"
     mediamtx_config: Path = BACKEND_DIR / "mediamtx" / "mediamtx.yml"
