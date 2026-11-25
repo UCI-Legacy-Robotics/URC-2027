@@ -1,0 +1,18 @@
+# Arm OV9281: mjpeg_camera and its video_stream_manager, both in
+# /arm_camera/camera_container (arm_camera.launch.py, which also sets the device).
+# See docs/rover/video-stream-manager.md.
+/arm_camera/camera:
+  ros__parameters:
+    # The OV9281 only offers MJPEG at 60 or 120 fps; publish 30.
+    width: 1280
+    height: 720
+    camera_fps: 60
+    fps: 30
+    frame_id: 'arm_camera'
+
+/arm_camera/video_stream_manager:
+  ros__parameters:
+    rtsp_url: 'rtsp://127.0.0.1:8554/rover/arm'
+    jpeg_input: true
+    bitrate_kbps: 2000
+    fps: 30
