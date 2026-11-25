@@ -13,8 +13,8 @@ export type LinkState = 'ok' | 'degraded' | 'lost'
 
 export interface RadioLink {
   state: LinkState
-  /** Time since the last packet was received, in milliseconds. */
-  lastSeenMs: number
+  /** Time since the last packet was received, in milliseconds. Missing if never heard. */
+  lastSeenMs?: number
   /** Received signal strength in dBm, if the radio reports it (RFD900x does). */
   rssiDbm?: number
 }

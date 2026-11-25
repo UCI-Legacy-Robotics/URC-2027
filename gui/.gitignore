@@ -11,5 +11,8 @@ node_modules/
 # Telemetry logs
 backend/tlogs/
 
+# MediaMTX binary from backend/scripts/install_mediamtx.sh
+backend/bin/
+
 # Local config
 .env
