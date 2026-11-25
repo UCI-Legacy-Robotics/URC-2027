@@ -4,7 +4,7 @@ import { screenTitle, useScreen, type ScreenId, type ScreenView } from './screen
 import { TopBar } from './TopBar'
 import { VideoScreen } from './VideoScreen'
 
-const screens: Record<ScreenId, (props: { view?: string }) => React.JSX.Element> = {
+const screens: Record<ScreenId, (props: { views?: readonly string[] }) => React.JSX.Element> = {
   main: MainScreen,
   video: VideoScreen
 }
@@ -22,7 +22,7 @@ export function AppShell(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <TopBar current={current} />
-      <Screen view={current.view} />
+      <Screen views={current.views} />
     </div>
   )
 }

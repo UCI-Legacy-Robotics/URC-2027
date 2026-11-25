@@ -4,4 +4,4 @@ One tile per rover camera (`instances`: front, arm), each playing from MediaMTX 
 
 - **Area:** `video` screen, `grid`
 - **Data:** [`data.ts`](data.ts). Video comes straight from MediaMTX (WHEP), not the message schema; the rover link and radio loss come from the backend (`/api/video/link`, `/api/video/stats/<path>`)
-- **Commands:** none. The camera buttons, SOURCE and RELOAD only change what this tile plays, so they work in viewer mode too
+- **Commands:** none. SOURCE and RELOAD only change what this tile plays, so they work in viewer mode too

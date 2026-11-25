@@ -3,29 +3,59 @@ import { Button } from '@renderer/design/ui/button'
 import { StatusPill } from '@renderer/design/StatusPill'
 import { useMode } from './mode'
 import { widgetsIn } from './registry'
-import { openScreen, screenIds, screenTitle, type ScreenId, type ScreenView } from './screens'
+import { openScreen, screenIds, screenTitle, showViews, type ScreenView } from './screens'
 import { WidgetArea } from './WidgetArea'
 import { WindowControls } from './WindowControls'
 
 /**
- * The screens and tiles the main screen can open in their own windows: each screen whole,
- * then each of its tiles (e.g. `Video · Front`), so every camera can get its own monitor.
+ * Toggles for which tiles this window shows, one per instance of the screen's widgets
+ * (e.g. FRONT and ARM on the video screen). At least one stays on.
  */
-function openableViews(): ScreenView[] {
-  return screenIds
-    .filter((id): id is Exclude<ScreenId, 'main'> => id !== 'main')
-    .flatMap((screen) => [
-      { screen },
-      ...widgetsIn({ screen, area: 'grid' }).flatMap((widget) =>
-        (widget.instances ?? []).map((view) => ({ screen, view }))
-      )
-    ])
+function ViewToggles({ current }: { current: ScreenView }): React.JSX.Element | null {
+  if (current.screen === 'main') return null
+  const screen = current.screen
+  const all = widgetsIn({ screen, area: 'grid' }).flatMap((widget) => widget.instances ?? [])
+  if (all.length < 2) return null
+  const shown = current.views ?? all
+
+  const toggle = (view: string): void => {
+    const next = all.filter((each) =>
+      each === view ? !shown.includes(each) : shown.includes(each)
+    )
+    showViews(screen, next.length === all.length ? undefined : next)
+  }
+
+  return (
+    <div className="flex gap-1 no-drag-region" role="group" aria-label="Shown tiles">
+      {all.map((view) => {
+        const on = shown.includes(view)
+        const last = on && shown.length === 1
+        return (
+          <Button
+            key={view}
+            variant={on ? 'default' : 'outline'}
+            size="xs"
+            // Green while the tile is shown in this window, so it reads at a glance.
+            className={on ? 'bg-ok text-bg hover:bg-ok/90' : 'text-fg-muted'}
+            aria-pressed={on}
+            // Not `disabled`: that would dim the one tile that's showing.
+            aria-disabled={last}
+            title={last ? 'At least one stays shown' : `${on ? 'Hide' : 'Show'} ${view}`}
+            onClick={() => !last && toggle(view)}
+          >
+            {view.toUpperCase()}
+          </Button>
+        )
+      })}
+    </div>
+  )
 }
 
 /**
  * The top status bar, on every screen. In Electron it's also the window's title bar:
  * drag it to move the window. Top-bar widgets render in the middle. The main screen
- * has buttons to open the other screens, or single tiles of them, in their own windows.
+ * has buttons that open the other screens in new windows; those screens have toggles for
+ * which of their tiles to show.
  */
 export function TopBar({ current }: { current: ScreenView }): React.JSX.Element {
   const mode = useMode()
@@ -47,18 +77,21 @@ export function TopBar({ current }: { current: ScreenView }): React.JSX.Element 
       <WidgetArea at={{ area: 'top-bar' }} className="flex flex-1 items-center gap-2" />
       <div className="flex items-center gap-3 self-stretch pr-3">
         {current.screen === 'main' &&
-          openableViews().map((target) => (
-            <Button
-              key={`${target.screen}/${target.view ?? ''}`}
-              variant="outline"
-              size="xs"
-              className="no-drag-region"
-              title={`Open ${screenTitle(target)} in its own window`}
-              onClick={() => openScreen(target.screen, target.view)}
-            >
-              {screenTitle(target).toUpperCase()}
-            </Button>
-          ))}
+          screenIds
+            .filter((id) => id !== 'main')
+            .map((id) => (
+              <Button
+                key={id}
+                variant="outline"
+                size="xs"
+                className="no-drag-region"
+                title={`Open a new ${screenTitle({ screen: id }).toLowerCase()} window`}
+                onClick={() => openScreen(id)}
+              >
+                {screenTitle({ screen: id }).toUpperCase()}
+              </Button>
+            ))}
+        <ViewToggles current={current} />
         <StatusPill tone={mode === 'control' ? 'primary' : 'neutral'}>{mode}</StatusPill>
         <WindowControls />
       </div>

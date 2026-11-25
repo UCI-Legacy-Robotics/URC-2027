@@ -96,27 +96,6 @@ function SourceForm({ tile, onDone }: { tile: string; onDone: () => void }): Rea
   )
 }
 
-/** Switches between the rover's cameras on the current server. */
-function CameraPicker({ tile }: { tile: string }): React.JSX.Element {
-  const { baseUrl, path, setSource } = useVideoSource(tile)
-  return (
-    <div className="flex gap-1" role="group" aria-label="Camera">
-      {cameras.map((camera) => (
-        <Button
-          key={camera.path}
-          variant={camera.path === path ? 'secondary' : 'outline'}
-          size="xs"
-          title={`${camera.name}: ${camera.path}`}
-          aria-pressed={camera.path === path}
-          onClick={() => setSource({ baseUrl, path: camera.path })}
-        >
-          {camera.label}
-        </Button>
-      ))}
-    </div>
-  )
-}
-
 /** What's wrong and what to check, for each cause the backend can tell apart. */
 function describeCause(cause: VideoFaultCause, path: string, roverHost?: string): [string, string] {
   switch (cause) {
@@ -208,7 +187,6 @@ export function VideoFeed({ data, instance }: WidgetProps<VideoFeedData>): React
         <span className="min-w-0 flex-1 truncate text-right font-mono text-xs text-fg-muted">
           {playing && data.stats ? formatStats(data.stats) : ''}
         </span>
-        <CameraPicker tile={tile} />
         <Button variant="outline" size="xs" title="Reconnect to the stream now" onClick={reload}>
           RELOAD
         </Button>

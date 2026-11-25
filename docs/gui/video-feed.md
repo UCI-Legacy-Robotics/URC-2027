@@ -1,19 +1,18 @@
 # Video feed widget
 
-The video screen's tiles (`gui/frontend/src/renderer/src/widgets/video-feed/`) each play one rover camera from MediaMTX over WebRTC and show how healthy the stream is. There's one tile per camera, `rover/front` (ZED 2i) and `rover/arm` (OV9281), side by side; each has its own camera choice, stats and reload. To give each camera its own monitor, open **VIDEO · FRONT** and **VIDEO · ARM** from the main screen's top bar: each opens a window with just that tile (`#/video/front`, `#/video/arm`). A tile's camera choice is saved per tile, not per window: the arm tile in its own window and in the both-cameras window start from the same saved choice, and a change in one shows in the other the next time it opens. For how video gets from the rover to the GUI, see [Video](../system/video.md).
+The video screen's tiles (`gui/frontend/src/renderer/src/widgets/video-feed/`) each play one rover camera from MediaMTX over WebRTC and show how healthy the stream is. There's one tile per camera, `rover/front` (ZED 2i) and `rover/arm` (OV9281), side by side; each has its own source, stats and reload. To give each camera its own monitor, click **VIDEO** in the main screen's top bar once per monitor, then use each video window's **FRONT** / **ARM** toggles (top bar, right) to choose its cameras: green means that camera is shown in this window, and at least one stays shown. A tile's SOURCE is saved per tile, not per window: the arm tile in two windows starts from the same saved source, and a change in one shows in the other the next time it opens. For how video gets from the rover to the GUI, see [Video](../system/video.md).
 
 ## Header
 
-`ROVER/FRONT  PLAYING   30 fps · 1280×720 · 1.8 Mb/s · buf 8 ms   FRONT  ARM  RELOAD  STATS  SOURCE`
+`ROVER/FRONT  PLAYING   30 fps · 1280×720 · 1.8 Mb/s · buf 8 ms   RELOAD  STATS  SOURCE`
 
 | Part | Meaning |
 | ---- | ------- |
 | Status pill | `CONNECTING` (first try), `PLAYING`, `RECONNECTING` (was playing, dropped) or `FAILED` (waiting to retry) |
 | Stats line | Decoded fps, frame size, bitrate and jitter buffer over the last second; freezes since the stream connected |
-| **FRONT** / **ARM** | Switches this tile to that camera on the same server. The highlighted one is playing |
 | **RELOAD** | Drops the connection and opens a new one at once, like a browser's reload. Also clears the graphs |
 | **STATS** | Opens the stats panel to the right of the video. Drag its left edge to resize it |
-| **SOURCE** | This tile's MediaMTX address and stream path, for anything the camera buttons don't cover, e.g. playing straight from the rover's MediaMTX (`http://192.168.1.67:8889`). Defaults to the base station, `http://<this machine>:18889`, and the tile's own camera. Saved per tile, per browser or Electron profile |
+| **SOURCE** | This tile's MediaMTX address and stream path, e.g. to play straight from the rover's MediaMTX (`http://192.168.1.67:8889`). Defaults to the base station, `http://<this machine>:18889`, and the tile's own camera. Saved per tile, per browser or Electron profile |
 
 The widget reconnects on its own when the stream drops, so RELOAD is only needed to skip a retry wait.
 

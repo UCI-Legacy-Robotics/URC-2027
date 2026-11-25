@@ -2,9 +2,9 @@ import { useMemo, useSyncExternalStore } from 'react'
 
 /**
  * A screen is a full-window layout. Each screen opens in its own Electron window (or
- * browser tab), so it can go on its own monitor. The window's URL hash picks the screen:
- * `#/video` is the video screen with every tile, `#/video/arm` only the arm camera's
- * tile, no hash is `main`.
+ * browser tab), so it can go on its own monitor. The window's URL hash picks the screen
+ * and its tiles: `#/video` is the video screen with every tile, `#/video/arm` only the
+ * arm camera's, no hash is `main`.
  *
  * Planned: a `debug` screen that can only be opened in debug mode, never in mission
  * mode (see docs/gui/architecture.md).
@@ -17,20 +17,24 @@ export const screenTitles: Record<ScreenId, string> = {
   video: 'Video'
 }
 
-/** A window's screen, and for the video screen optionally one tile, e.g. `arm`. */
+/** A window's screen, and which of its tiles it shows. */
 export interface ScreenView {
   screen: ScreenId
-  /** Shows only this instance of the screen's widgets; all of them when undefined. */
-  view?: string
+  /**
+   * The instances of the screen's widgets to show, e.g. `['arm']`; every one when
+   * undefined. Kept in the URL hash, so a reload keeps the window's choice.
+   */
+  views?: readonly string[]
 }
 
 const viewPattern = /^[a-z0-9-]+$/
 
-/** `#/video/arm` → `{ screen: 'video', view: 'arm' }`; no or unknown hash → main. */
+/** `#/video/front,arm` → `{ screen: 'video', views: ['front', 'arm'] }`; no or unknown hash → main. */
 function parseHash(hash: string): ScreenView {
-  const [id, view] = hash.replace(/^#\/?/, '').split('/')
+  const [id, list] = hash.replace(/^#\/?/, '').split('/')
   if (!(screenIds as readonly string[]).includes(id) || id === 'main') return { screen: 'main' }
-  return { screen: id as ScreenId, view: view && viewPattern.test(view) ? view : undefined }
+  const views = (list ?? '').split(',').filter((view) => viewPattern.test(view))
+  return { screen: id as ScreenId, views: views.length ? views : undefined }
 }
 
 function subscribe(onChange: () => void): () => void {
@@ -44,20 +48,29 @@ export function useScreen(): ScreenView {
   return useMemo(() => parseHash(hash), [hash])
 }
 
-/** "Video", or "Video · Arm" for one tile. */
-export function screenTitle({ screen, view }: ScreenView): string {
+/** "Video", or "Video · Arm" when the window shows only some tiles. */
+export function screenTitle({ screen, views }: ScreenView): string {
   const title = screenTitles[screen]
-  return view ? `${title} · ${view[0].toUpperCase()}${view.slice(1)}` : title
+  if (!views) return title
+  return `${title} · ${views.map((view) => view[0].toUpperCase() + view.slice(1)).join(', ')}`
 }
 
 /**
- * Opens a screen, or one tile of it: a new Electron window (or focuses it if it's
- * already open), or a new tab in a browser.
+ * Changes which tiles this window shows, keeping it in the URL hash without adding a
+ * history entry. Undefined shows every tile.
  */
-export function openScreen(screen: ScreenId, view?: string): void {
+export function showViews(screen: ScreenId, views: readonly string[] | undefined): void {
+  window.location.replace(`#/${screen}${views ? `/${views.join(',')}` : ''}`)
+}
+
+/**
+ * Opens a screen: the main window is focused if it's open; any other screen opens a new
+ * Electron window each time (or a new browser tab), so each monitor can have one.
+ */
+export function openScreen(screen: ScreenId): void {
   if (window.baseStation) {
-    window.baseStation.window.openScreen(screen, view)
+    window.baseStation.window.openScreen(screen)
   } else {
-    window.open(`#/${screen}${view ? `/${view}` : ''}`, '_blank')
+    window.open(`#/${screen}`, '_blank')
   }
 }

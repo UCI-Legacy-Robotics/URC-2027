@@ -5,25 +5,21 @@ import icon from '../../resources/icon.png?asset'
 
 const isMac = process.platform === 'darwin'
 
-/** Screens the UI can show, one per window. Keep in sync with src/renderer/src/app/screens.ts. */
+/** Screens the UI can show, each in its own window. Keep in sync with src/renderer/src/app/screens.ts. */
 const screens = ['main', 'video'] as const
 type Screen = (typeof screens)[number]
 
 const isScreen = (value: unknown): value is Screen =>
   typeof value === 'string' && (screens as readonly string[]).includes(value)
 
-/** A tile of a screen, e.g. `arm`. Goes into the URL hash, so only plain names. */
-const isView = (value: unknown): value is string =>
-  typeof value === 'string' && /^[a-z0-9-]+$/.test(value)
+/**
+ * The main window, at most one. Other screens can have any number of windows (one per
+ * monitor), each choosing its own tiles.
+ */
+let mainWindow: BrowserWindow | undefined
+const otherWindows = new Set<BrowserWindow>()
 
-/** `video`, or `video/arm` for one tile: the window's URL hash, and its key below. */
-const viewKey = (screen: Screen, view?: string): string => (view ? `${screen}/${view}` : screen)
-
-/** At most one window per screen, and per tile of a screen. */
-const screenWindows = new Map<string, BrowserWindow>()
-
-function createWindow(screen: Screen, view?: string): BrowserWindow {
-  const key = viewKey(screen, view)
+function createWindow(screen: Screen): BrowserWindow {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -40,13 +36,16 @@ function createWindow(screen: Screen, view?: string): BrowserWindow {
     }
   })
 
-  screenWindows.set(key, win)
+  if (screen === 'main') mainWindow = win
+  else otherWindows.add(win)
   win.on('closed', () => {
-    screenWindows.delete(key)
-    // The main window owns the session: closing it closes the other screens too.
-    if (screen === 'main') {
-      for (const other of screenWindows.values()) other.close()
+    if (screen !== 'main') {
+      otherWindows.delete(win)
+      return
     }
+    mainWindow = undefined
+    // The main window owns the session: closing it closes the other screens too.
+    for (const other of otherWindows) other.close()
   })
 
   win.on('ready-to-show', () => {
@@ -66,7 +65,7 @@ function createWindow(screen: Screen, view?: string): BrowserWindow {
   // The URL hash tells the UI which screen to show (no hash = main).
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
-  const hash = screen === 'main' ? '' : `/${key}`
+  const hash = screen === 'main' ? '' : `/${screen}`
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}${hash ? `#${hash}` : ''}`)
   } else {
@@ -76,14 +75,13 @@ function createWindow(screen: Screen, view?: string): BrowserWindow {
   return win
 }
 
-/** Focuses the screen's (or tile's) window if it's open, otherwise opens it. */
-function openScreen(screen: Screen, view?: string): void {
-  const existing = screenWindows.get(viewKey(screen, view))
-  if (existing) {
-    if (existing.isMinimized()) existing.restore()
-    existing.focus()
+/** Focuses the main window if it's open; opens a new window for anything else. */
+function openScreen(screen: Screen): void {
+  if (screen === 'main' && mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
   } else {
-    createWindow(screen, view)
+    createWindow(screen)
   }
 }
 
@@ -100,9 +98,8 @@ function registerWindowControls(): void {
     else win.maximize()
   })
   ipcMain.on('window:close', (event) => senderWindow(event)?.close())
-  ipcMain.on('window:open-screen', (_event, screen: unknown, view: unknown) => {
-    if (!isScreen(screen) || (view !== undefined && !isView(view))) return
-    openScreen(screen, screen === 'main' ? undefined : view)
+  ipcMain.on('window:open-screen', (_event, screen: unknown) => {
+    if (isScreen(screen)) openScreen(screen)
   })
 }
 

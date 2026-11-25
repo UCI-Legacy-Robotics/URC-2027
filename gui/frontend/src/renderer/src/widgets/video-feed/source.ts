@@ -21,20 +21,18 @@ export const defaultSource = {
 export type VideoSource = typeof defaultSource
 
 /**
- * The rover's cameras, by MediaMTX path: one video tile each, and the camera buttons.
+ * The rover's cameras, by MediaMTX path: one video tile each.
  * Keep in step with the backend's `BASE_ROVER_STREAM_PATHS` and the base MediaMTX config.
  */
 export const cameras = [
   {
     id: 'front',
-    label: 'FRONT',
     path: 'rover/front',
     name: 'ZED 2i (front)',
     launch: 'Is ros2 launch rover_bringup video.launch.py running?'
   },
   {
     id: 'arm',
-    label: 'ARM',
     path: 'rover/arm',
     name: 'OV9281 (arm)',
     launch: 'Is the video launch running with arm_camera:=true, and the OV9281 plugged in?'
