@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.mediamtx_restart_delay_s,
     )
     rover = RoverLink(
-        settings.rover_host, settings.rover_rtsp_port, settings.rover_stream_path
+        settings.rover_host, settings.rover_rtsp_port, settings.rover_stream_paths
     )
     video.start()
     rover.start()

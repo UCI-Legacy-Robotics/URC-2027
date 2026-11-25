@@ -3,8 +3,10 @@
 # ROVER_HOST is replaced with the rover's 5 GHz IP from the backend settings
 # (BASE_ROVER_HOST) before MediaMTX starts. Don't run this file directly.
 #
-# Pulls the rover's stream over the 5 GHz link only while someone is watching,
-# and serves it over WebRTC to the GUI: http://<base>:18889/rover/front.
+# Pulls each of the rover's camera streams over the 5 GHz link only while
+# someone is watching it, and serves it over WebRTC to the GUI:
+# http://<base>:18889/rover/front, http://<base>:18889/rover/arm.
+# Keep the paths in step with BASE_ROVER_STREAM_PATHS (app/settings.py).
 # Ports are offset by 10000 from the rover's, so both can run on one machine.
 
 logLevel: info
@@ -44,4 +46,7 @@ paths:
   # the rover on ports MediaMTX picks at random.
   rover/front:
     source: rtsp://ROVER_HOST:8554/rover/front
+    rtspTransport: udp
+  rover/arm:
+    source: rtsp://ROVER_HOST:8554/rover/arm
     rtspTransport: udp

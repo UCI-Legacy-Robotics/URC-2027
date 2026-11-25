@@ -88,7 +88,7 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 `GET /api/health` reports whether the base MediaMTX is running. `GET /api/video/stats/<path>` gives running totals for one stream from the base MediaMTX: RTP packets lost between the rover and the base (counted from MediaMTX's log), bytes received and damaged frames. The video widget's STATS panel graphs them.
 
-`GET /api/video/link` reports the rover's side of the 5 GHz link. Every 2 s the backend asks the rover's MediaMTX for `rover/front` (`BASE_ROVER_STREAM_PATH`) with an RTSP `DESCRIBE` on port 8554: no answer is `unreachable`, a 404 is `no-stream` (the rover is up but the ROS video launch isn't streaming), and a 200 is `ok`. The top bar's 5 GHz badge and the video widget's error messages use it.
+`GET /api/video/link` reports the rover's side of the 5 GHz link. Every 2 s the backend asks the rover's MediaMTX for each camera path (`BASE_ROVER_STREAM_PATHS`, default `["rover/front", "rover/arm"]`) with an RTSP `DESCRIBE` on port 8554. `state` is `ok` if the rover answered any of them and `unreachable` if it answered none. `streams` maps each path to whether the rover is streaming it (a 200 rather than a 404), e.g. `{"rover/front": true, "rover/arm": false}` when the arm camera isn't launched. The top bar's 5 GHz badge uses `state`; the video widget's error messages use both.
 
 ### Base station video
 

@@ -8,11 +8,14 @@ from app.mediamtx import MediaMtx, render_config
 from app.settings import BACKEND_DIR, Settings
 
 
-def test_config_pulls_rover_front_over_udp() -> None:
+def test_config_pulls_every_camera_over_udp() -> None:
     template = (BACKEND_DIR / "mediamtx" / "mediamtx.yml").read_text()
     config = render_config(template, "10.0.0.5")
-    assert "source: rtsp://10.0.0.5:8554/rover/front" in config
-    assert "rtspTransport: udp" in config
+    for path in Settings().rover_stream_paths:
+        assert (
+            f"  {path}:\n    source: rtsp://10.0.0.5:8554/{path}\n    rtspTransport: udp"
+            in config
+        )
     assert "ROVER_HOST" not in config
 
 

@@ -59,6 +59,7 @@ function sameHost(a: string, b: string): boolean {
 /** The likely reason there's no video. Backend causes only count when playing from the base. */
 function faultCause(
   whepUrl: string,
+  path: string,
   backend: 'unknown' | 'up' | 'down',
   link: VideoLinkStatus | undefined
 ): VideoFaultCause | undefined {
@@ -67,7 +68,7 @@ function faultCause(
   if (!link) return undefined
   if (viaBase && !link.mediamtx) return 'base-down'
   if (link.state === 'unreachable') return 'rover-unreachable'
-  if (link.state === 'no-stream') return 'no-stream'
+  if (link.streams[path] === false) return 'no-stream'
   return undefined
 }
 
@@ -88,5 +89,5 @@ export function useVideoFeed(): VideoFeedData {
   // Until the new player reports, don't show the old source's state.
   const current: VideoFeedData = data.whepUrl === whepUrl ? data : { state: 'connecting', whepUrl }
   if (current.state === 'playing') return current
-  return { ...current, cause: faultCause(whepUrl, backend, link), roverHost: link?.roverHost }
+  return { ...current, cause: faultCause(whepUrl, path, backend, link), roverHost: link?.roverHost }
 }
