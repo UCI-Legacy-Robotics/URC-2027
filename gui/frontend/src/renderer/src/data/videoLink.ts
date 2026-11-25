@@ -3,18 +3,23 @@ import { create } from 'zustand'
 import { backendUrl } from './backend'
 
 /**
- * The rover's video side as the backend's probe sees it:
- * - `ok`: the rover answered and is streaming the probed path
- * - `no-stream`: the rover answered over 5 GHz but has no stream (ROS video not running)
+ * The 5 GHz link as the backend's probe sees it:
+ * - `ok`: the rover's MediaMTX answered (see `streams` for which cameras are streaming)
  * - `unreachable`: no answer from the rover (5 GHz link down or rover off)
  * - `unknown`: the backend hasn't probed yet
  */
-export type RoverVideoState = 'ok' | 'no-stream' | 'unreachable' | 'unknown'
+export type RoverVideoState = 'ok' | 'unreachable' | 'unknown'
 
 /** `GET /api/video/link` from the backend. */
 export interface VideoLinkStatus {
   state: RoverVideoState
   detail: string | null
+  /**
+   * Whether the rover is streaming each camera path it was probed for, e.g.
+   * `{ 'rover/front': true, 'rover/arm': false }`. Probed every 2 s; empty while the rover
+   * doesn't answer. A path that isn't listed wasn't probed.
+   */
+  streams: Record<string, boolean>
   roverHost: string
   /** Time since the rover last answered, ms. Null if it hasn't answered since the backend started. */
   lastSeenMs: number | null

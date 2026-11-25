@@ -85,11 +85,12 @@ The UI doesn't have to fit on one monitor. It's split into **screens**: full-win
 | Screen | Layout | Opened |
 | ------ | ------ | ------ |
 | `main` | Left panel, map in the center, right panel | At startup |
-| `video` | Grid of video tiles | From the **VIDEO** button in the main screen's top bar |
+| `video` | Grid of video tiles, one per camera | From the **VIDEO** button in the main screen's top bar: each click opens another video window. Its top bar's **FRONT** / **ARM** toggles choose which cameras that window shows |
 | `debug` (planned) | Debug tools | Only in **debug mode**, never in mission mode |
 
 - Every screen has the same top bar: name, top-bar widgets (link status), mode and window buttons. So each window shows link state and mode on its own.
-- The URL hash picks the screen: `#/video` is the video screen, no hash is `main`. In Electron each screen opens as its own window, at most one per screen, and closing the main window closes the others. Browser viewers open screens as new tabs, e.g. `http://<base>/#/video`.
+- The URL hash picks the screen and its tiles: `#/video` is the video screen with every tile, `#/video/arm` only the arm camera's, `#/video/front,arm` both; no hash is `main`. The toggles rewrite the hash without adding history, so a reload keeps a window's choice. The toggles come from widgets registered with `instances` (see [Writing a widget](widgets.md)), so a new camera tile gets a toggle without shell changes.
+- In Electron there's one main window; every other screen opens a new window per click, so each monitor can have its own. Closing the main window closes the others. Browser viewers open screens as new tabs, e.g. `http://<base>/#/video/arm`.
 - Each window will hold its own connection to the backend, which streams the same data to every client. Windows don't pass data to each other.
 - Layouts are fixed for v1. Side panels will collapse; a docking or rearrangeable layout can come later.
 - Later: remember each window's monitor and position, and reopen windows there.

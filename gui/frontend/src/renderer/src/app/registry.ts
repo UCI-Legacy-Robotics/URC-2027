@@ -12,6 +12,8 @@ export type WidgetPlacement =
 /** Props every widget component gets: its data, or `undefined` before any arrives. */
 export interface WidgetProps<TData> {
   data: TData | undefined
+  /** Which tile this is, for a widget registered with `instances`; otherwise undefined. */
+  instance?: string
 }
 
 /** A widget's registration. Each widget folder default-exports one from its `index.ts`. */
@@ -24,10 +26,16 @@ export type WidgetDefinition<TData = unknown> = WidgetPlacement & {
   order: number
   component: ComponentType<WidgetProps<TData>>
   /**
-   * Hook that supplies the widget's data. Returns fixture data until the backend
-   * exists (Phase B), then reads from the store. Must follow the rules of hooks.
+   * Shows the widget once per entry, in this order, each with its own data and state
+   * (e.g. one video tile per camera). Omit to show it once.
    */
-  useData: () => TData | undefined
+  instances?: readonly string[]
+  /**
+   * Hook that supplies the widget's data, called once per instance. Returns fixture data
+   * until the backend exists (Phase B), then reads from the store. Must follow the rules
+   * of hooks.
+   */
+  useData: (instance?: string) => TData | undefined
 }
 
 /** Type-checks a widget definition. Use as `export default defineWidget({ ... })`. */

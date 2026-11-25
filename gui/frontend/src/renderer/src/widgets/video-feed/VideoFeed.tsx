@@ -4,8 +4,8 @@ import { StatusPill, type StatusTone } from '@renderer/design/StatusPill'
 import { Button } from '@renderer/design/ui/button'
 import type { VideoConnectionState, VideoFaultCause, VideoFeedData, VideoStats } from './data'
 import { useStatsHistory } from './history'
-import { defaultSource, useVideoSource, type VideoSource } from './source'
-import { StatsPanel } from './StatsPanel'
+import { cameras, defaultSourceFor, defaultTile, useVideoSource, type VideoSource } from './source'
+import { StatsPanel, type StatsSide } from './StatsPanel'
 
 const tone: Record<VideoConnectionState, StatusTone> = {
   connecting: 'neutral',
@@ -38,8 +38,9 @@ function useSecondsUntil(at: number | undefined): number | undefined {
 }
 
 /** Edits the MediaMTX address and stream path. Only changes what this screen plays. */
-function SourceForm({ onDone }: { onDone: () => void }): React.JSX.Element {
-  const { baseUrl, path, setSource } = useVideoSource()
+function SourceForm({ tile, onDone }: { tile: string; onDone: () => void }): React.JSX.Element {
+  const { baseUrl, path, setSource } = useVideoSource(tile)
+  const fallback = defaultSourceFor(tile)
   const [draft, setDraft] = useState<VideoSource>({ baseUrl, path })
 
   let invalid: string | undefined
@@ -69,7 +70,7 @@ function SourceForm({ onDone }: { onDone: () => void }): React.JSX.Element {
         <input
           className={`${input} flex-1`}
           value={draft.baseUrl}
-          placeholder={defaultSource.baseUrl}
+          placeholder={fallback.baseUrl}
           spellCheck={false}
           onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
         />
@@ -79,7 +80,7 @@ function SourceForm({ onDone }: { onDone: () => void }): React.JSX.Element {
         <input
           className={`${input} flex-1`}
           value={draft.path}
-          placeholder={defaultSource.path}
+          placeholder={fallback.path}
           spellCheck={false}
           onChange={(event) => setDraft({ ...draft, path: event.target.value })}
         />
@@ -88,15 +89,41 @@ function SourceForm({ onDone }: { onDone: () => void }): React.JSX.Element {
       <Button type="submit" size="xs" disabled={!!invalid}>
         APPLY
       </Button>
-      <Button type="button" variant="outline" size="xs" onClick={() => setDraft(defaultSource)}>
+      <Button type="button" variant="outline" size="xs" onClick={() => setDraft(fallback)}>
         DEFAULT
       </Button>
     </form>
   )
 }
 
+/**
+ * Where the stats panel goes in a box this shape: to the right when the box is wider than
+ * the video (so there's spare width beside it), underneath when it's taller. Uses the
+ * box's own size, which doesn't change with the panel, so the side can't flip back and
+ * forth; it follows window resizes and tiles being shown or hidden.
+ */
+function useStatsSide(
+  boxRef: React.RefObject<HTMLDivElement | null>,
+  videoAspect: number
+): StatsSide {
+  const [side, setSide] = useState<StatsSide>('right')
+  useEffect(() => {
+    const box = boxRef.current
+    if (!box) return
+    const update = (): void => {
+      const { clientWidth: width, clientHeight: height } = box
+      if (width && height) setSide(width / height > videoAspect ? 'right' : 'bottom')
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(box)
+    return () => observer.disconnect()
+  }, [boxRef, videoAspect])
+  return side
+}
+
 /** What's wrong and what to check, for each cause the backend can tell apart. */
-function describeCause(cause: VideoFaultCause, roverHost?: string): [string, string] {
+function describeCause(cause: VideoFaultCause, path: string, roverHost?: string): [string, string] {
   switch (cause) {
     case 'backend-down':
       return ['Backend not running', 'Start it from gui/backend: uv run uvicorn app.main:app']
@@ -108,12 +135,16 @@ function describeCause(cause: VideoFaultCause, roverHost?: string): [string, str
         'Check the 5 GHz link and that the rover is powered'
       ]
     case 'no-stream':
-      return ['Rover has no camera stream', 'The rover answers; is the ROS video launch running?']
+      return [
+        `Rover isn't streaming ${path}`,
+        cameras.find((camera) => camera.path === path)?.launch ??
+          'The rover answers; is the ROS video launch running?'
+      ]
   }
 }
 
 /** What to show over the video while it isn't playing. */
-function StatusOverlay({ data }: { data: VideoFeedData }): React.JSX.Element {
+function StatusOverlay({ data, path }: { data: VideoFeedData; path: string }): React.JSX.Element {
   const retryIn = useSecondsUntil(data.state === 'failed' ? data.retryAt : undefined)
   const headline = {
     connecting: 'Connecting…',
@@ -124,7 +155,7 @@ function StatusOverlay({ data }: { data: VideoFeedData }): React.JSX.Element {
   const detail =
     data.state === 'failed' ? (retryIn ? `Retrying in ${retryIn}s` : 'Retrying…') : data.error
 
-  const cause = data.cause && describeCause(data.cause, data.roverHost)
+  const cause = data.cause && describeCause(data.cause, path, data.roverHost)
 
   return (
     <div className="absolute inset-0 grid place-content-center gap-1 text-center">
@@ -156,14 +187,14 @@ function StatusOverlay({ data }: { data: VideoFeedData }): React.JSX.Element {
  * stats. Read-only: sends no commands. The source can be changed in both control and
  * viewer mode, since it only changes what this screen plays.
  */
-export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Element {
+export function VideoFeed({ data, instance }: WidgetProps<VideoFeedData>): React.JSX.Element {
+  const tile = instance ?? defaultTile
   const videoRef = useRef<HTMLVideoElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
   const [showStats, setShowStats] = useState(false)
-  const reloads = useVideoSource((source) => source.reloads)
+  const { reloads, path, reload } = useVideoSource(tile)
   const samples = useStatsHistory(data, videoRef, reloads)
-  const path = useVideoSource((source) => source.path)
-  const reload = useVideoSource((source) => source.reload)
   const stream = data?.stream
 
   useEffect(() => {
@@ -172,6 +203,8 @@ export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Eleme
   }, [stream])
 
   const playing = data?.state === 'playing'
+  const { width, height } = data?.stats ?? {}
+  const statsSide = useStatsSide(bodyRef, width && height ? width / height : 16 / 9)
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-panel">
@@ -203,9 +236,12 @@ export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Eleme
           SOURCE
         </Button>
       </header>
-      {editing && <SourceForm onDone={() => setEditing(false)} />}
-      <div className="flex min-h-0 flex-1">
-        <div className="relative min-w-0 flex-1 bg-bg">
+      {editing && <SourceForm tile={tile} onDone={() => setEditing(false)} />}
+      <div
+        ref={bodyRef}
+        className={`flex min-h-0 flex-1 ${statsSide === 'right' ? 'flex-row' : 'flex-col'}`}
+      >
+        <div className="relative min-h-0 min-w-0 flex-1 bg-bg">
           {/* Muted, inline autoplay: browsers allow it without a click, and it adds no buffering. */}
           <video
             ref={videoRef}
@@ -215,9 +251,9 @@ export function VideoFeed({ data }: WidgetProps<VideoFeedData>): React.JSX.Eleme
             playsInline
             disablePictureInPicture
           />
-          {data && !playing && <StatusOverlay data={data} />}
+          {data && !playing && <StatusOverlay data={data} path={path} />}
         </div>
-        {showStats && <StatsPanel samples={samples} />}
+        {showStats && <StatsPanel samples={samples} side={statsSide} />}
       </div>
     </section>
   )

@@ -1,11 +1,17 @@
 import { cn } from 'cn'
 import { widgetsIn, type AreaRef, type WidgetDefinition } from './registry'
 
-/** Renders one widget, feeding it from its data hook. */
-function WidgetSlot({ widget }: { widget: WidgetDefinition }): React.JSX.Element {
-  const data = widget.useData()
+/** Renders one widget (or one instance of it), feeding it from its data hook. */
+function WidgetSlot({
+  widget,
+  instance
+}: {
+  widget: WidgetDefinition
+  instance?: string
+}): React.JSX.Element {
+  const data = widget.useData(instance)
   const Widget = widget.component
-  return <Widget data={data} />
+  return <Widget data={data} instance={instance} />
 }
 
 /**
@@ -14,9 +20,12 @@ function WidgetSlot({ widget }: { widget: WidgetDefinition }): React.JSX.Element
  */
 export function WidgetArea({
   at,
+  instances,
   className
 }: {
   at: AreaRef
+  /** Shows only these instances of widgets that have instances; all of them when undefined. */
+  instances?: readonly string[]
   className?: string
 }): React.JSX.Element {
   const widgets = widgetsIn(at)
@@ -38,9 +47,13 @@ export function WidgetArea({
 
   return (
     <div className={className}>
-      {widgets.map((widget) => (
-        <WidgetSlot key={widget.id} widget={widget} />
-      ))}
+      {widgets.flatMap((widget) =>
+        (
+          widget.instances?.filter((each) => !instances || instances.includes(each)) ?? [undefined]
+        ).map((each) => (
+          <WidgetSlot key={`${widget.id}:${each ?? ''}`} widget={widget} instance={each} />
+        ))
+      )}
     </div>
   )
 }

@@ -114,7 +114,7 @@ function Live(): React.JSX.Element {
 
 /**
  * Connects for real, to the source set with the SOURCE button (default
- * `http://localhost:8889`, path `rover/front`). Shows "failed" with retries if nothing
+ * `http://localhost:18889`, path `rover/front`). Shows "failed" with retries if nothing
  * is running there.
  */
 export const LiveStream: Story = {
@@ -127,7 +127,17 @@ export const StatsSteady: Story = {
   args: { data: undefined },
   render: () => (
     <div className="flex h-full justify-end">
-      <StatsPanel samples={fixtures.statsNormal} />
+      <StatsPanel samples={fixtures.statsNormal} side="right" />
+    </div>
+  )
+}
+
+/** The panel underneath, as in a tile taller than its video (e.g. two tiles side by side). */
+export const StatsUnderneath: Story = {
+  args: { data: undefined },
+  render: () => (
+    <div className="flex h-full flex-col justify-end">
+      <StatsPanel samples={fixtures.statsNormal} side="bottom" />
     </div>
   )
 }
@@ -136,7 +146,7 @@ export const StatsFreezeThenBurst: Story = {
   args: { data: undefined },
   render: () => (
     <div className="flex h-full justify-end">
-      <StatsPanel samples={fixtures.statsFreeze} />
+      <StatsPanel samples={fixtures.statsFreeze} side="right" />
     </div>
   )
 }
@@ -145,7 +155,7 @@ export const StatsNoSamplesYet: Story = {
   args: { data: undefined },
   render: () => (
     <div className="flex h-full justify-end">
-      <StatsPanel samples={fixtures.statsEmpty} />
+      <StatsPanel samples={fixtures.statsEmpty} side="right" />
     </div>
   )
 }

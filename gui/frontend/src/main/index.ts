@@ -5,15 +5,19 @@ import icon from '../../resources/icon.png?asset'
 
 const isMac = process.platform === 'darwin'
 
-/** Screens the UI can show, one per window. Keep in sync with src/renderer/src/app/screens.ts. */
+/** Screens the UI can show, each in its own window. Keep in sync with src/renderer/src/app/screens.ts. */
 const screens = ['main', 'video'] as const
 type Screen = (typeof screens)[number]
 
 const isScreen = (value: unknown): value is Screen =>
   typeof value === 'string' && (screens as readonly string[]).includes(value)
 
-/** At most one window per screen. */
-const screenWindows = new Map<Screen, BrowserWindow>()
+/**
+ * The main window, at most one. Other screens can have any number of windows (one per
+ * monitor), each choosing its own tiles.
+ */
+let mainWindow: BrowserWindow | undefined
+const otherWindows = new Set<BrowserWindow>()
 
 function createWindow(screen: Screen): BrowserWindow {
   const win = new BrowserWindow({
@@ -32,13 +36,16 @@ function createWindow(screen: Screen): BrowserWindow {
     }
   })
 
-  screenWindows.set(screen, win)
+  if (screen === 'main') mainWindow = win
+  else otherWindows.add(win)
   win.on('closed', () => {
-    screenWindows.delete(screen)
-    // The main window owns the session: closing it closes the other screens too.
-    if (screen === 'main') {
-      for (const other of screenWindows.values()) other.close()
+    if (screen !== 'main') {
+      otherWindows.delete(win)
+      return
     }
+    mainWindow = undefined
+    // The main window owns the session: closing it closes the other screens too.
+    for (const other of otherWindows) other.close()
   })
 
   win.on('ready-to-show', () => {
@@ -68,12 +75,11 @@ function createWindow(screen: Screen): BrowserWindow {
   return win
 }
 
-/** Focuses the screen's window if it's open, otherwise opens it. */
+/** Focuses the main window if it's open; opens a new window for anything else. */
 function openScreen(screen: Screen): void {
-  const existing = screenWindows.get(screen)
-  if (existing) {
-    if (existing.isMinimized()) existing.restore()
-    existing.focus()
+  if (screen === 'main' && mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
   } else {
     createWindow(screen)
   }

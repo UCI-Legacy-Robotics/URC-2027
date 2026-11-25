@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 log = logging.getLogger(__name__)
 
-RoverState = Literal["unknown", "ok", "no-stream", "unreachable"]
+RoverState = Literal["ok", "no-stream", "unreachable"]
 
 
 async def probe_rtsp(
@@ -42,24 +42,33 @@ async def probe_rtsp(
     return "ok", f"rover answered {status_line!r}"
 
 
+LinkState = Literal["unknown", "ok", "unreachable"]
+
+
 class RoverLink:
-    """Probes the rover's MediaMTX every few seconds, whether or not anyone is watching."""
+    """Probes each of the rover's camera streams every few seconds, whether or not anyone
+    is watching.
+
+    The link is `ok` while the rover's MediaMTX answers any probe. `streams` says, per
+    path, whether the rover is streaming it; it's empty while the rover doesn't answer.
+    """
 
     def __init__(
         self,
         host: str,
         port: int,
-        path: str,
+        paths: list[str],
         interval_s: float = 2.0,
         timeout_s: float = 2.0,
     ) -> None:
         self._host = host
         self._port = port
-        self._path = path
+        self._paths = paths
         self._interval_s = interval_s
         self._timeout_s = timeout_s
-        self._state: RoverState = "unknown"
+        self._state: LinkState = "unknown"
         self._detail: str | None = None
+        self._streams: dict[str, bool] = {}
         self._last_answer: float | None = None
         self._task: asyncio.Task[None] | None = None
 
@@ -79,18 +88,40 @@ class RoverLink:
         return {
             "state": self._state,
             "detail": self._detail,
+            "streams": dict(self._streams),
             "roverHost": self._host,
             "lastSeenMs": since,
         }
 
+    async def probe_once(self) -> None:
+        results = await asyncio.gather(
+            *(
+                probe_rtsp(self._host, self._port, path, self._timeout_s)
+                for path in self._paths
+            )
+        )
+        streams = {
+            path: state == "ok"
+            for path, (state, _detail) in zip(self._paths, results, strict=True)
+            if state != "unreachable"
+        }
+        if streams:
+            state: LinkState = "ok"
+            detail = None
+            self._last_answer = time.monotonic()
+        else:
+            state = "unreachable"
+            detail = results[0][1] if results else None
+        if state != self._state:
+            log.info("rover link %s%s", state, f" ({detail})" if detail else "")
+        for path, streaming in streams.items():
+            if self._streams.get(path) != streaming:
+                log.info(
+                    "rover %s %s", path, "streaming" if streaming else "not streaming"
+                )
+        self._state, self._detail, self._streams = state, detail, streams
+
     async def _run(self) -> None:
         while True:
-            state, detail = await probe_rtsp(
-                self._host, self._port, self._path, self._timeout_s
-            )
-            if state != self._state:
-                log.info("rover link %s%s", state, f" ({detail})" if detail else "")
-            self._state, self._detail = state, detail
-            if state != "unreachable":
-                self._last_answer = time.monotonic()
+            await self.probe_once()
             await asyncio.sleep(self._interval_s)
