@@ -9,6 +9,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
     "msg/Keypoints.msg"
     "msg/GesturePrediction.msg"
+    "msg/GestureEvent.msg"
     DEPENDENCIES std_msgs
 )
 
