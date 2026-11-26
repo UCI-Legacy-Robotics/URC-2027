@@ -26,12 +26,13 @@ int main(int argc, char** argv) {
   int32_t position = 0;
   int32_t velocity = 0;
 
+
   // 4. Run a 100 Hz control & telemetry loop demonstrating vel, pos, and torque modes
-  for (int step = 0; step < 5000; ++step) {
-    if (step < 2500) {
-      stepper->set_vel(20);      // First 25.0s: Velocity control (20 steps/s)
+  for (int step = 0; step < 1000; ++step) {
+    if (step < 500) {
+      stepper->set_pos(1000);      // First 25.0s: Velocity control (20 steps/s)
     } else {
-      stepper->set_pos(30);     // Next 25.0s:  Position control (30 steps)
+      stepper->set_vel(30);     // Next 25.0s:  Position control (30 steps)
     } 
 
     position = stepper->get_pos();
