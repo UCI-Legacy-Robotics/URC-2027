@@ -39,6 +39,7 @@ target_link_libraries(CanManagerCore
 add_library(CanDevices SHARED
   src/devices/ODriveDevice.cpp
   src/devices/YellowJacketDevice.cpp
+  src/devices/StepperDevice.cpp
 )
 
 target_link_libraries(CanDevices
@@ -59,6 +60,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/dev/test_control.cpp")
   add_executable(test_control dev/test_control.cpp)
   target_link_libraries(test_control PRIVATE CanDevices)
   install(TARGETS test_control DESTINATION lib/${PROJECT_NAME})
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/dev/stepper_test.cpp")
+  add_executable(stepper_test dev/stepper_test.cpp)
+  target_link_libraries(stepper_test PRIVATE CanDevices)
+  install(TARGETS stepper_test DESTINATION lib/${PROJECT_NAME})
 endif()
 
 # ==============================================================================

@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
   const std::string interface_name = (argc > 1) ? argv[1] : "vcan0";
 
   auto stepper = StepperDevice::register_device(
-      "stepper_device", /*node_id=*/0x23, /*rx_timeout=*/300ms, /*control_timeout=*/200ms, interface_name);
+      "stepper_device", /*node_id=*/0x23, /*rx_timeout=*/1000ms, /*control_timeout=*/200ms, interface_name);
   stepper = StepperDevice::find_device("stepper_device", interface_name);
 
   std::cout << "Registered '" << stepper->name() << "' on " << interface_name << "\n";
