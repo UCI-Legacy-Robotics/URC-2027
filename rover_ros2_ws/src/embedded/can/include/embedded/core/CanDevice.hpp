@@ -46,8 +46,9 @@ public:
 protected:
   // --- Device Subclass Overrides ---
   virtual void on_rx(const CanFrame& frame) = 0;
-  virtual void on_soft_block() {}
-  virtual void on_hard_block() {}
+  virtual void on_normal_trigger() {}
+  virtual void on_soft_block_trigger() {}
+  virtual void on_hard_block_trigger() {}
 
   static void register_with_manager(const std::shared_ptr<CanDevice>& device);
   static std::shared_ptr<CanDevice> find_registered_device(
@@ -67,7 +68,7 @@ protected:
   // Create persistent message helpers during derived-device construction.
   std::shared_ptr<ServiceChannel> create_service(ServiceChannel::AckMatcher matcher);
 
-  void mark_control_updated() noexcept;
+  void mark_control_updated();
 
 private:
   friend class CanManager;
