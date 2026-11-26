@@ -48,6 +48,8 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(10ms);
   }
 
+  
   stepper->set_vel(0);  
+  sleep_for(100ms);  // Allow time for the last command to be sent before exiting
   return 0;
 }
