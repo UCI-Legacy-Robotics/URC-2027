@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<library path="yellowjacket_hardware">
+  <class name="yellowjacket_hardware/YellowjacketSystem"
+         type="yellowjacket_hardware::YellowjacketSystem"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>CAN bridge RoboClaw system scaffold; transport is not implemented.</description>
+  </class>
+</library>
