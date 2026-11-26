@@ -48,6 +48,6 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(10ms);
   }
 
-  stepper->set_vel(20);  
+  stepper->set_vel(0);  
   return 0;
 }
