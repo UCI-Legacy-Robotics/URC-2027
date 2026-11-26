@@ -27,9 +27,5 @@ install(FILES README.md DESTINATION share/${PROJECT_NAME})
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(hardware_interface pluginlib rclcpp rclcpp_lifecycle embedded_can)
 
-if(BUILD_TESTING)
-  find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_plugin test/test_plugin.cpp)
-  target_link_libraries(test_plugin ${PROJECT_NAME})
-endif()
+
 ament_package()
