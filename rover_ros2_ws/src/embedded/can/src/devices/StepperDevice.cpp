@@ -29,7 +29,6 @@ StepperDevice::StepperDevice(
 bool StepperDevice::set_pos(int32_t pos_steps) noexcept {
   bool success = true;
   target_pos_.store(pos_steps, std::memory_order_release);
-  has_target_.store(true, std::memory_order_release);
 
   ControlMode old = control_mode_.exchange(ControlMode::POSITION, std::memory_order_acq_rel);
   if (old != ControlMode::POSITION) {
@@ -48,7 +47,6 @@ bool StepperDevice::set_vel(int32_t vel_steps_s) noexcept {
 
   bool success = true;
   target_vel_.store(vel_steps_s, std::memory_order_release);
-  has_target_.store(true, std::memory_order_release);
 
   ControlMode old = control_mode_.exchange(ControlMode::VELOCITY, std::memory_order_acq_rel);
   if (old != ControlMode::VELOCITY) {
@@ -72,7 +70,6 @@ void StepperDevice::on_rx(const CanFrame& frame) {
       if (frame.dlc >= 5) {
         axis_error_.store(unpack_u32(&frame.data[0]), std::memory_order_release);
         current_axis_state_.store(frame.data[4], std::memory_order_release);
-        heartbeat_arrived_.store(true, std::memory_order_release);
       }
       break;
 
@@ -105,11 +102,7 @@ void StepperDevice::on_soft_block() {
 // --- Frame builders ---
 // setpoint for the current mode; nothing before the first heartbeat and target, or on error
 std::optional<CanFrame> StepperDevice::build_normal_setpoint_frame() const noexcept {
-  if (!has_target_.load(std::memory_order_acquire) ||
-      !heartbeat_arrived_.load(std::memory_order_acquire) ||
-      axis_error_.load(std::memory_order_acquire) != 0) {
-    return std::nullopt;
-  }
+
 
   switch (control_mode_.load(std::memory_order_acquire)) {
     case ControlMode::POSITION: {

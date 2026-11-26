@@ -56,6 +56,7 @@ private:
   static constexpr uint8_t kCmdSetInputPos = 0x00C;
   static constexpr uint8_t kCmdSetInputVel = 0x00D;
   // velocity limit
+  // TODO: make into parameter
   static constexpr int32_t kMaxVelStepsPerSec = 180;
 
   std::optional<CanFrame> build_normal_setpoint_frame() const noexcept;
@@ -77,10 +78,6 @@ private:
   std::atomic<int32_t> vel_est_{0};
   std::atomic<uint32_t> current_axis_state_{0};
   std::atomic<uint32_t> axis_error_{0};
-
-  // safety: nothing is sent before the first heartbeat and the first target
-  std::atomic<bool> has_target_{false};
-  std::atomic<bool> heartbeat_arrived_{false};
 
   // Explicit TX Message Members
   std::shared_ptr<PeriodicMessage> setpoint_periodic_;
