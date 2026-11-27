@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/*
+ * Design tokens. Every color, font and text size in the UI comes from here, so the whole
+ * app can be restyled in one place. Placeholder values: task A2 sets the real ones.
+ * See docs/gui/design.md and the style guide in Storybook.
+ *
+ * `static`: always output every token as a CSS variable, even unused ones, so code can read
+ * them at runtime (the style guide, and canvas-drawn plots and maps later).
+ */
+@theme static {
+  /* Drop Tailwind's default palette: only our tokens exist (bg-panel, not bg-zinc-900). */
+  --color-*: initial;
+
+  /* Surfaces */
+  --color-bg: #0d0d0d; /* app background */
+  --color-panel: #171717; /* panels, top bar */
+  --color-panel-raised: #1f1f1f; /* hover, selected rows */
+  --color-border: #2b2b2b; /* 1px borders */
+
+  /* Text */
+  --color-fg: #d4d4d4; /* body text */
+  --color-fg-muted: #a3a3a3; /* labels, secondary text */
+  --color-fg-strong: #f5f5f5; /* values, emphasis */
+
+  /* Semantic accents: use sparingly */
+  --color-ok: #3fb950; /* green: OK, online, executing */
+  --color-primary: #f2a93b; /* amber: primary action, selected item */
+  --color-caution: #f2a93b; /* amber: caution */
+  --color-fault: #e5484d; /* red: stop, cancel, fault */
+
+  /* Fonts: system stacks only, no web fonts (the field has no internet) */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Ubuntu, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Ubuntu Mono', Menlo, Consolas, monospace;
+
+  /* Square corners everywhere: every rounded-* class resolves to 0. */
+  --radius-*: initial;
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+}
+
+/*
+ * shadcn's color names, as aliases of our tokens, so shadcn components follow our theme.
+ * Use our names (bg-panel, text-fg-muted) in our own code; these exist for design/ui/.
+ */
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-fg);
+  --color-card: var(--color-panel);
+  --color-card-foreground: var(--color-fg);
+  --color-popover: var(--color-panel);
+  --color-popover-foreground: var(--color-fg);
+  --color-primary-foreground: var(--color-bg);
+  --color-secondary: var(--color-panel-raised);
+  --color-secondary-foreground: var(--color-fg-strong);
+  --color-muted: var(--color-panel-raised);
+  --color-muted-foreground: var(--color-fg-muted);
+  --color-accent: var(--color-panel-raised);
+  --color-accent-foreground: var(--color-fg-strong);
+  --color-destructive: var(--color-fault);
+  --color-destructive-foreground: var(--color-fg-strong);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-primary);
+}
+
+/* Electron window dragging: the top bar is the title bar. */
+@utility drag-region {
+  -webkit-app-region: drag;
+}
+
+@utility no-drag-region {
+  -webkit-app-region: no-drag;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-bg font-sans text-fg;
+  }
+}
