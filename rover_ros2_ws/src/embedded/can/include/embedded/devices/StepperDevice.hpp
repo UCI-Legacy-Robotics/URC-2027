@@ -37,7 +37,7 @@ public:
 
 protected:
   void on_rx(const CanFrame& frame) override;
-  void on_soft_block() override;
+  void on_soft_block_trigger() override;
 
 private:
   friend class CanDeviceFactory<StepperDevice>;
