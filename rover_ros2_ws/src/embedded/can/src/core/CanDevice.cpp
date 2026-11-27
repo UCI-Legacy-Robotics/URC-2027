@@ -157,11 +157,14 @@ ImmediateCommand CanDevice::create_immediate(ImmediateCommand::FrameBuilder buil
   return ImmediateCommand(*this, std::move(builder));
 }
 
-void CanDevice::mark_control_updated() noexcept {
+void CanDevice::mark_control_updated() {
   last_control_ns_.store(now_ns(), std::memory_order_release);
 
   DeviceState expected = DeviceState::SOFT_BLOCK;
-  state_.compare_exchange_strong(expected, DeviceState::NORMAL, std::memory_order_acq_rel);
+  if (state_.compare_exchange_strong(
+          expected, DeviceState::NORMAL, std::memory_order_acq_rel)) {
+    on_normal_trigger();
+  }
 }
 
 void CanDevice::handle_rx(const CanFrame& frame) {
@@ -175,9 +178,14 @@ void CanDevice::handle_rx(const CanFrame& frame) {
       const bool ctrl_stale =
           (control_timeout_ns_ > 0) &&
           ((t - last_control_ns_.load(std::memory_order_acquire)) > control_timeout_ns_);
-      state_.store(
-          ctrl_stale ? DeviceState::SOFT_BLOCK : DeviceState::NORMAL,
-          std::memory_order_release);
+      const DeviceState next_state =
+          ctrl_stale ? DeviceState::SOFT_BLOCK : DeviceState::NORMAL;
+      const DeviceState prev_state = state_.exchange(next_state, std::memory_order_acq_rel);
+      if (next_state == DeviceState::SOFT_BLOCK && prev_state != DeviceState::SOFT_BLOCK) {
+        on_soft_block_trigger();
+      } else if (next_state == DeviceState::NORMAL && prev_state != DeviceState::NORMAL) {
+        on_normal_trigger();
+      }
     }
   }
 
@@ -197,7 +205,7 @@ void CanDevice::check_watchdog(int64_t now) {
     const DeviceState prev =
         state_.exchange(DeviceState::ERROR_HARD_BLOCK, std::memory_order_acq_rel);
     if (prev != DeviceState::ERROR_HARD_BLOCK) {
-      on_hard_block();
+      on_hard_block_trigger();
     }
     return;
   }
@@ -208,7 +216,7 @@ void CanDevice::check_watchdog(int64_t now) {
     DeviceState expected = DeviceState::NORMAL;
     if (state_.compare_exchange_strong(
             expected, DeviceState::SOFT_BLOCK, std::memory_order_acq_rel)) {
-      on_soft_block();
+      on_soft_block_trigger();
     }
   }
 }
